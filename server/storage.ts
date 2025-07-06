@@ -1,9 +1,13 @@
 import { 
+  users,
   projects, 
   teamMembers, 
   projectMembers, 
   uploadSchedule, 
   activities,
+  projectPermissions,
+  type User,
+  type UpsertUser,
   type Project, 
   type InsertProject,
   type TeamMember,
@@ -12,18 +16,26 @@ import {
   type InsertUploadSchedule,
   type Activity,
   type InsertActivity,
+  type ProjectPermission,
+  type InsertProjectPermission,
   type ProjectWithMembers,
   type UploadScheduleWithProject,
   type ActivityWithDetails
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations (mandatory for authentication)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  
   // Projects
-  getProjects(): Promise<ProjectWithMembers[]>;
-  getProject(id: number): Promise<ProjectWithMembers | undefined>;
-  createProject(project: InsertProject): Promise<Project>;
-  updateProject(id: number, project: Partial<InsertProject>): Promise<Project | undefined>;
-  deleteProject(id: number): Promise<boolean>;
+  getProjects(userId?: string): Promise<ProjectWithMembers[]>;
+  getProject(id: number, userId?: string): Promise<ProjectWithMembers | undefined>;
+  createProject(project: InsertProject, userId: string): Promise<Project>;
+  updateProject(id: number, project: Partial<InsertProject>, userId: string): Promise<Project | undefined>;
+  deleteProject(id: number, userId: string): Promise<boolean>;
   
   // Team Members
   getTeamMembers(): Promise<TeamMember[]>;
@@ -31,238 +43,227 @@ export interface IStorage {
   createTeamMember(member: InsertTeamMember): Promise<TeamMember>;
   
   // Upload Schedule
-  getUploadSchedule(): Promise<UploadScheduleWithProject[]>;
-  getUploadScheduleByProject(projectId: number): Promise<UploadScheduleWithProject[]>;
-  createUploadScheduleItem(item: InsertUploadSchedule): Promise<UploadSchedule>;
-  updateUploadScheduleItem(id: number, item: Partial<InsertUploadSchedule>): Promise<UploadSchedule | undefined>;
+  getUploadSchedule(userId?: string): Promise<UploadScheduleWithProject[]>;
+  getUploadScheduleByProject(projectId: number, userId?: string): Promise<UploadScheduleWithProject[]>;
+  createUploadScheduleItem(item: InsertUploadSchedule, userId: string): Promise<UploadSchedule>;
+  updateUploadScheduleItem(id: number, item: Partial<InsertUploadSchedule>, userId: string): Promise<UploadSchedule | undefined>;
   
   // Activities
-  getActivities(limit?: number): Promise<ActivityWithDetails[]>;
+  getActivities(limit?: number, userId?: string): Promise<ActivityWithDetails[]>;
   createActivity(activity: InsertActivity): Promise<Activity>;
   
-  // Project Members
-  addProjectMember(projectId: number, memberId: number): Promise<void>;
-  removeProjectMember(projectId: number, memberId: number): Promise<void>;
+  // Project Members & Permissions
+  addProjectMember(projectId: number, memberId: number, userId: string): Promise<void>;
+  removeProjectMember(projectId: number, memberId: number, userId: string): Promise<void>;
+  setProjectPermission(projectId: number, userId: string, permission: string, grantedBy: string): Promise<void>;
+  hasProjectPermission(projectId: number, userId: string, permission: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private projects: Map<number, Project>;
-  private teamMembers: Map<number, TeamMember>;
-  private projectMembers: Map<number, { projectId: number; memberId: number }>;
-  private uploadSchedule: Map<number, UploadSchedule>;
-  private activities: Map<number, Activity>;
-  private currentProjectId: number;
-  private currentMemberId: number;
-  private currentProjectMemberId: number;
-  private currentScheduleId: number;
-  private currentActivityId: number;
-
-  constructor() {
-    this.projects = new Map();
-    this.teamMembers = new Map();
-    this.projectMembers = new Map();
-    this.uploadSchedule = new Map();
-    this.activities = new Map();
-    this.currentProjectId = 1;
-    this.currentMemberId = 1;
-    this.currentProjectMemberId = 1;
-    this.currentScheduleId = 1;
-    this.currentActivityId = 1;
-    
-    this.seedData();
+export class DatabaseStorage implements IStorage {
+  // User operations (mandatory for authentication)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
-  private seedData() {
-    // Create team members
-    const teamMembers = [
-      { name: "Alex Johnson", role: "Content Manager", avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100", email: "alex@team.com" },
-      { name: "Sarah Chen", role: "Video Editor", avatarUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100", email: "sarah@team.com" },
-      { name: "Mike Johnson", role: "Script Writer", avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100", email: "mike@team.com" },
-      { name: "Emma Wilson", role: "Content Planner", avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100", email: "emma@team.com" },
-    ];
-
-    teamMembers.forEach(member => {
-      const id = this.currentMemberId++;
-      this.teamMembers.set(id, { ...member, id });
-    });
-
-    // Create projects
-    const projects = [
-      { name: "Tech Tutorials", category: "Technology", status: "Active", thumbnailUrl: "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100", subscribers: 24500, videoCount: 127, monthlyViews: 185000 },
-      { name: "Gaming Central", category: "Gaming", status: "In Review", thumbnailUrl: "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100", subscribers: 48200, videoCount: 203, monthlyViews: 342000 },
-      { name: "Lifestyle Vibe", category: "Lifestyle", status: "Active", thumbnailUrl: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100", subscribers: 12800, videoCount: 89, monthlyViews: 98000 },
-    ];
-
-    projects.forEach(project => {
-      const id = this.currentProjectId++;
-      this.projects.set(id, { ...project, id, createdAt: new Date() });
-    });
-
-    // Create project members
-    const projectMemberAssignments = [
-      { projectId: 1, memberId: 1 },
-      { projectId: 1, memberId: 2 },
-      { projectId: 2, memberId: 1 },
-      { projectId: 2, memberId: 3 },
-      { projectId: 3, memberId: 4 },
-      { projectId: 3, memberId: 2 },
-    ];
-
-    projectMemberAssignments.forEach(assignment => {
-      const id = this.currentProjectMemberId++;
-      this.projectMembers.set(id, { ...assignment });
-    });
-
-    // Create upload schedule
-    const scheduleItems = [
-      { projectId: 1, title: "React Hooks Tutorial", scheduledDate: new Date("2024-12-15T14:00:00Z"), status: "scheduled", description: "Advanced React Hooks deep dive" },
-      { projectId: 2, title: "New Game Review", scheduledDate: new Date("2024-12-17T17:00:00Z"), status: "scheduled", description: "Latest AAA game review" },
-      { projectId: 3, title: "Morning Routine Vlog", scheduledDate: new Date("2024-12-20T10:00:00Z"), status: "scheduled", description: "Daily morning routine for productivity" },
-    ];
-
-    scheduleItems.forEach(item => {
-      const id = this.currentScheduleId++;
-      this.uploadSchedule.set(id, { ...item, id });
-    });
-
-    // Create activities
-    const activities = [
-      { userId: 2, projectId: 1, action: "uploaded a new video to", details: "React Hooks Tutorial" },
-      { userId: 3, projectId: 2, action: "completed the script review for", details: "New Game Review" },
-      { userId: 4, projectId: 3, action: "scheduled 3 new videos for", details: "Lifestyle content planning" },
-    ];
-
-    activities.forEach(activity => {
-      const id = this.currentActivityId++;
-      this.activities.set(id, { ...activity, id, createdAt: new Date() });
-    });
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
   }
 
-  async getProjects(): Promise<ProjectWithMembers[]> {
-    const projects = Array.from(this.projects.values());
-    return projects.map(project => ({
-      ...project,
-      members: this.getProjectMembers(project.id)
-    }));
+  // Projects
+  async getProjects(userId?: string): Promise<ProjectWithMembers[]> {
+    const projectsData = await db.select().from(projects).orderBy(desc(projects.createdAt));
+    const projectsWithMembers: ProjectWithMembers[] = [];
+
+    for (const project of projectsData) {
+      const members = await this.getProjectMembers(project.id);
+      projectsWithMembers.push({
+        ...project,
+        members,
+      });
+    }
+
+    return projectsWithMembers;
   }
 
-  async getProject(id: number): Promise<ProjectWithMembers | undefined> {
-    const project = this.projects.get(id);
+  async getProject(id: number, userId?: string): Promise<ProjectWithMembers | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
     if (!project) return undefined;
-    
+
+    const members = await this.getProjectMembers(id);
     return {
       ...project,
-      members: this.getProjectMembers(id)
+      members,
     };
   }
 
-  async createProject(project: InsertProject): Promise<Project> {
-    const id = this.currentProjectId++;
-    const newProject: Project = { ...project, id, createdAt: new Date() };
-    this.projects.set(id, newProject);
+  async createProject(project: InsertProject, userId: string): Promise<Project> {
+    const [newProject] = await db
+      .insert(projects)
+      .values({
+        ...project,
+        createdBy: userId,
+      })
+      .returning();
     return newProject;
   }
 
-  async updateProject(id: number, project: Partial<InsertProject>): Promise<Project | undefined> {
-    const existingProject = this.projects.get(id);
-    if (!existingProject) return undefined;
-    
-    const updatedProject = { ...existingProject, ...project };
-    this.projects.set(id, updatedProject);
+  async updateProject(id: number, project: Partial<InsertProject>, userId: string): Promise<Project | undefined> {
+    const [updatedProject] = await db
+      .update(projects)
+      .set({ ...project, updatedAt: new Date() })
+      .where(eq(projects.id, id))
+      .returning();
     return updatedProject;
   }
 
-  async deleteProject(id: number): Promise<boolean> {
-    return this.projects.delete(id);
+  async deleteProject(id: number, userId: string): Promise<boolean> {
+    const result = await db.delete(projects).where(eq(projects.id, id));
+    return result.rowCount > 0;
   }
 
+  // Team Members
   async getTeamMembers(): Promise<TeamMember[]> {
-    return Array.from(this.teamMembers.values());
+    return await db.select().from(teamMembers).where(eq(teamMembers.isActive, true));
   }
 
   async getTeamMember(id: number): Promise<TeamMember | undefined> {
-    return this.teamMembers.get(id);
+    const [member] = await db.select().from(teamMembers).where(eq(teamMembers.id, id));
+    return member;
   }
 
   async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
-    const id = this.currentMemberId++;
-    const newMember: TeamMember = { ...member, id };
-    this.teamMembers.set(id, newMember);
+    const [newMember] = await db.insert(teamMembers).values(member).returning();
     return newMember;
   }
 
-  async getUploadSchedule(): Promise<UploadScheduleWithProject[]> {
-    const scheduleItems = Array.from(this.uploadSchedule.values());
-    return scheduleItems.map(item => ({
-      ...item,
-      project: this.projects.get(item.projectId!)!
+  // Upload Schedule
+  async getUploadSchedule(userId?: string): Promise<UploadScheduleWithProject[]> {
+    const scheduleData = await db
+      .select()
+      .from(uploadSchedule)
+      .leftJoin(projects, eq(uploadSchedule.projectId, projects.id))
+      .orderBy(uploadSchedule.scheduledDate);
+
+    return scheduleData.map(item => ({
+      ...item.upload_schedule,
+      project: item.projects!,
     }));
   }
 
-  async getUploadScheduleByProject(projectId: number): Promise<UploadScheduleWithProject[]> {
-    const scheduleItems = Array.from(this.uploadSchedule.values()).filter(item => item.projectId === projectId);
-    return scheduleItems.map(item => ({
-      ...item,
-      project: this.projects.get(item.projectId!)!
+  async getUploadScheduleByProject(projectId: number, userId?: string): Promise<UploadScheduleWithProject[]> {
+    const scheduleData = await db
+      .select()
+      .from(uploadSchedule)
+      .leftJoin(projects, eq(uploadSchedule.projectId, projects.id))
+      .where(eq(uploadSchedule.projectId, projectId))
+      .orderBy(uploadSchedule.scheduledDate);
+
+    return scheduleData.map(item => ({
+      ...item.upload_schedule,
+      project: item.projects!,
     }));
   }
 
-  async createUploadScheduleItem(item: InsertUploadSchedule): Promise<UploadSchedule> {
-    const id = this.currentScheduleId++;
-    const newItem: UploadSchedule = { ...item, id };
-    this.uploadSchedule.set(id, newItem);
+  async createUploadScheduleItem(item: InsertUploadSchedule, userId: string): Promise<UploadSchedule> {
+    const [newItem] = await db
+      .insert(uploadSchedule)
+      .values({
+        ...item,
+        createdBy: userId,
+      })
+      .returning();
     return newItem;
   }
 
-  async updateUploadScheduleItem(id: number, item: Partial<InsertUploadSchedule>): Promise<UploadSchedule | undefined> {
-    const existingItem = this.uploadSchedule.get(id);
-    if (!existingItem) return undefined;
-    
-    const updatedItem = { ...existingItem, ...item };
-    this.uploadSchedule.set(id, updatedItem);
+  async updateUploadScheduleItem(id: number, item: Partial<InsertUploadSchedule>, userId: string): Promise<UploadSchedule | undefined> {
+    const [updatedItem] = await db
+      .update(uploadSchedule)
+      .set(item)
+      .where(eq(uploadSchedule.id, id))
+      .returning();
     return updatedItem;
   }
 
-  async getActivities(limit = 10): Promise<ActivityWithDetails[]> {
-    const activities = Array.from(this.activities.values())
-      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
-      .slice(0, limit);
-    
-    return activities.map(activity => ({
-      ...activity,
-      user: this.teamMembers.get(activity.userId!)!,
-      project: this.projects.get(activity.projectId!)!
+  // Activities
+  async getActivities(limit = 10, userId?: string): Promise<ActivityWithDetails[]> {
+    const activitiesData = await db
+      .select()
+      .from(activities)
+      .leftJoin(users, eq(activities.userId, users.id))
+      .leftJoin(projects, eq(activities.projectId, projects.id))
+      .orderBy(desc(activities.createdAt))
+      .limit(limit);
+
+    return activitiesData.map(item => ({
+      ...item.activities,
+      user: item.users!,
+      project: item.projects!,
     }));
   }
 
   async createActivity(activity: InsertActivity): Promise<Activity> {
-    const id = this.currentActivityId++;
-    const newActivity: Activity = { ...activity, id, createdAt: new Date() };
-    this.activities.set(id, newActivity);
+    const [newActivity] = await db.insert(activities).values(activity).returning();
     return newActivity;
   }
 
-  async addProjectMember(projectId: number, memberId: number): Promise<void> {
-    const id = this.currentProjectMemberId++;
-    this.projectMembers.set(id, { projectId, memberId });
+  // Project Members & Permissions
+  async addProjectMember(projectId: number, memberId: number, userId: string): Promise<void> {
+    await db.insert(projectMembers).values({ projectId, memberId });
   }
 
-  async removeProjectMember(projectId: number, memberId: number): Promise<void> {
-    for (const [id, member] of this.projectMembers.entries()) {
-      if (member.projectId === projectId && member.memberId === memberId) {
-        this.projectMembers.delete(id);
-        break;
-      }
-    }
+  async removeProjectMember(projectId: number, memberId: number, userId: string): Promise<void> {
+    await db.delete(projectMembers).where(
+      and(
+        eq(projectMembers.projectId, projectId),
+        eq(projectMembers.memberId, memberId)
+      )
+    );
   }
 
-  private getProjectMembers(projectId: number): TeamMember[] {
-    const memberIds = Array.from(this.projectMembers.values())
-      .filter(pm => pm.projectId === projectId)
-      .map(pm => pm.memberId);
-    
-    return memberIds.map(id => this.teamMembers.get(id)!).filter(Boolean);
+  async setProjectPermission(projectId: number, userId: string, permission: string, grantedBy: string): Promise<void> {
+    await db.insert(projectPermissions).values({
+      projectId,
+      userId,
+      permission,
+      grantedBy,
+    });
+  }
+
+  async hasProjectPermission(projectId: number, userId: string, permission: string): Promise<boolean> {
+    const [result] = await db
+      .select()
+      .from(projectPermissions)
+      .where(
+        and(
+          eq(projectPermissions.projectId, projectId),
+          eq(projectPermissions.userId, userId),
+          eq(projectPermissions.permission, permission)
+        )
+      );
+    return !!result;
+  }
+
+  private async getProjectMembers(projectId: number): Promise<TeamMember[]> {
+    const membersData = await db
+      .select()
+      .from(projectMembers)
+      .leftJoin(teamMembers, eq(projectMembers.memberId, teamMembers.id))
+      .where(eq(projectMembers.projectId, projectId));
+
+    return membersData.map(item => item.team_members!);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
