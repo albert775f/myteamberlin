@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,41 +30,37 @@ export default function Schedule() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header title="Upload Schedule" description="Manage your content publishing timeline." />
-          <main className="flex-1 overflow-y-auto p-6">
-            <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-20" />
-              ))}
-            </div>
-          </main>
-        </div>
+      <div className="flex-1 flex flex-col">
+        <Header title="Upload Schedule" description="Manage your content publishing timeline." />
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-20" />
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header 
-          title="Upload Schedule" 
-          description="Manage your content publishing timeline."
-        />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="mb-6 flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-900">Scheduled Uploads</h3>
-            <Button className="bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4 mr-2" />
-              Schedule Upload
-            </Button>
-          </div>
-          
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <Header 
+        title="Upload Schedule" 
+        description="Manage your content publishing timeline."
+      />
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="mb-6 flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900">Scheduled Uploads</h3>
+          <Button className="bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4 mr-2" />
+            Schedule Upload
+          </Button>
+        </div>
+        
+        {schedule && schedule.length > 0 ? (
           <div className="space-y-4">
-            {schedule?.map((item) => (
+            {schedule.map((item) => (
               <Card key={item.id} className="shadow-sm">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -98,8 +93,17 @@ export default function Schedule() {
               </Card>
             ))}
           </div>
-        </main>
-      </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="text-gray-500 text-lg mb-4">No scheduled uploads</div>
+            <p className="text-gray-400 mb-6">Schedule your first upload to get started</p>
+            <Button className="bg-primary hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />
+              Schedule First Upload
+            </Button>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
