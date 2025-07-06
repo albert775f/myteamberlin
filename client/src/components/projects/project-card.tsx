@@ -11,6 +11,7 @@ import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 import YouTubeSyncButton from "./youtube-sync-button";
 import type { ProjectWithMembers } from "@shared/schema";
 
@@ -21,6 +22,7 @@ interface ProjectCardProps {
 
 export default function ProjectCard({ project, onEdit }: ProjectCardProps) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const deleteMutation = useMutation({
     mutationFn: async (projectId: number) => {
@@ -70,7 +72,7 @@ export default function ProjectCard({ project, onEdit }: ProjectCardProps) {
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setLocation(`/projects/${project.id}`)}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -121,11 +123,8 @@ export default function ProjectCard({ project, onEdit }: ProjectCardProps) {
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
               <YouTubeSyncButton project={project} />
-              <Button variant="ghost" size="sm" className="text-primary hover:text-primary/90">
-                View Details
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0">

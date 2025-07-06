@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertProjectSchema, insertUploadScheduleSchema, insertActivitySchema } from "@shared/schema";
+import { insertProjectSchema, insertUploadScheduleSchema, insertActivitySchema, insertDescriptionTemplateSchema } from "@shared/schema";
 import { z } from "zod";
 import { youtubeAPI } from "./youtube";
 
@@ -41,6 +41,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(project);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch project" });
+    }
+  });
+
+  app.get("/api/upload-schedule/project/:id", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const schedule = await storage.getUploadScheduleByProject(projectId, undefined);
+      res.json(schedule);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch project schedule" });
+    }
+  });
+
+  app.get("/api/description-templates/:projectId", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const templates = await storage.getDescriptionTemplates(projectId);
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch templates" });
+    }
+  });
+
+  app.post("/api/description-templates", isAuthenticated, async (req, res) => {
+    try {
+      const template = insertDescriptionTemplateSchema.parse(req.body);
+      const result = await storage.createDescriptionTemplate(template);
+      res.status(201).json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create template" });
+    }
+  });
+
+  app.put("/api/description-templates/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const template = insertDescriptionTemplateSchema.partial().parse(req.body);
+      const result = await storage.updateDescriptionTemplate(id, template);
+      if (!result) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update template" });
+    }
+  });
+
+  app.delete("/api/description-templates/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteDescriptionTemplate(id);
+      if (!success) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      res.json({ message: "Template deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete template" });
     }
   });
 
