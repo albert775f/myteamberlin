@@ -36,6 +36,8 @@ export default function CreateProjectDialog({ trigger }: CreateProjectDialogProp
       thumbnailUrl: "",
       subscribers: 0,
       monthlyViews: 0,
+      youtubeChannelId: "",
+      youtubeChannelUrl: "",
     },
   });
 
@@ -137,6 +139,25 @@ export default function CreateProjectDialog({ trigger }: CreateProjectDialogProp
             />
 
 
+
+            <FormField
+              control={form.control}
+              name="youtubeChannelId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>YouTube Channel ID (Optional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="UC1234567890123456789012" 
+                      value={field.value || ""} 
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

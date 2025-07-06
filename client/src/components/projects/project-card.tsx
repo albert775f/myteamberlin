@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import YouTubeSyncButton from "./youtube-sync-button";
 import type { ProjectWithMembers } from "@shared/schema";
 
 interface ProjectCardProps {
@@ -53,7 +54,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Subscribers</span>
-            <span className="font-medium">{formatNumber(project.subscribers)}</span>
+            <span className="font-medium">{formatNumber(project.subscribers || 0)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Videos</span>
@@ -61,7 +62,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Monthly Views</span>
-            <span className="font-medium">{formatNumber(project.monthlyViews)}</span>
+            <span className="font-medium">{formatNumber(project.monthlyViews || 0)}</span>
           </div>
         </div>
         
@@ -82,9 +83,12 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                 </div>
               )}
             </div>
-            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/90">
-              View Details
-            </Button>
+            <div className="flex gap-2">
+              <YouTubeSyncButton project={project} />
+              <Button variant="ghost" size="sm" className="text-primary hover:text-primary/90">
+                View Details
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

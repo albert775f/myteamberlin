@@ -112,6 +112,28 @@ The application uses a relational database with the following main entities:
 - July 06, 2025: Database implementation with PostgreSQL and Drizzle ORM
 - July 06, 2025: Authentication system integrated with Replit OAuth for internal employee access
 - July 06, 2025: Sample data seeded for demonstration purposes
+- July 06, 2025: Demo data cleared and seeding disabled for production use
+- July 06, 2025: YouTube API integration added with channel sync functionality
+
+## YouTube API Integration
+
+### Features Added
+- **YouTube Channel Linking**: Projects can be linked to YouTube channels via channel ID
+- **Real-time Data Sync**: Fetch live subscriber counts, view counts, and video counts
+- **Channel Search**: Search for YouTube channels by name to find channel IDs
+- **Automatic Updates**: Sync button on project cards to update data from YouTube
+- **Channel Information**: Display channel thumbnails, URLs, and statistics
+
+### API Endpoints
+- `GET /api/youtube/channel/:channelId` - Fetch channel data by ID
+- `GET /api/youtube/search/:query` - Search for channels by name
+- `POST /api/projects/:id/sync-youtube` - Sync project with YouTube data
+- `GET /api/youtube/channel/:channelId/videos` - Get channel videos
+
+### Database Schema Updates
+- Added `youtubeChannelId` field to projects table
+- Added `youtubeChannelUrl` field for channel links
+- Added `lastSyncedAt` timestamp for tracking sync status
 
 ## User Preferences
 

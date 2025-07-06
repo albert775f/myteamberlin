@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertProjectSchema, insertUploadScheduleSchema, insertActivitySchema } from "@shared/schema";
 import { z } from "zod";
+import { youtubeAPI } from "./youtube";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -175,6 +176,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // YouTube API endpoints
+  app.get("/api/youtube/channel/:channelId", isAuthenticated, async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      const channelData = await youtubeAPI.getChannelData(channelId);
+      
+      if (!channelData) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+      
+      res.json(channelData);
+    } catch (error) {
+      console.error("Error fetching YouTube channel:", error);
+      res.status(500).json({ message: "Failed to fetch channel data" });
+    }
+  });
+
+  app.get("/api/youtube/search/:query", isAuthenticated, async (req, res) => {
+    try {
+      const { query } = req.params;
+      const maxResults = parseInt(req.query.maxResults as string) || 10;
+      const channels = await youtubeAPI.searchChannels(query, maxResults);
+      
+      res.json(channels);
+    } catch (error) {
+      console.error("Error searching YouTube channels:", error);
+      res.status(500).json({ message: "Failed to search channels" });
+    }
+  });
+
+  app.post("/api/projects/:id/sync-youtube", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const project = await storage.getProject(projectId, userId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      if (!project.youtubeChannelId) {
+        return res.status(400).json({ message: "No YouTube channel linked to this project" });
+      }
+      
+      const channelData = await youtubeAPI.getChannelData(project.youtubeChannelId);
+      if (!channelData) {
+        return res.status(404).json({ message: "YouTube channel not found" });
+      }
+      
+      // Update project with YouTube data
+      const updatedProject = await storage.updateProject(projectId, {
+        name: channelData.title,
+        thumbnailUrl: channelData.thumbnailUrl,
+        subscribers: channelData.subscriberCount,
+        videoCount: channelData.videoCount,
+        monthlyViews: channelData.viewCount,
+        youtubeChannelUrl: `https://youtube.com/channel/${channelData.id}`,
+        lastSyncedAt: new Date(),
+      }, userId);
+      
+      res.json(updatedProject);
+    } catch (error) {
+      console.error("Error syncing YouTube data:", error);
+      res.status(500).json({ message: "Failed to sync YouTube data" });
+    }
+  });
+
+  app.get("/api/youtube/channel/:channelId/videos", isAuthenticated, async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      const maxResults = parseInt(req.query.maxResults as string) || 10;
+      const videos = await youtubeAPI.getChannelVideos(channelId, maxResults);
+      
+      res.json(videos);
+    } catch (error) {
+      console.error("Error fetching YouTube videos:", error);
+      res.status(500).json({ message: "Failed to fetch channel videos" });
     }
   });
 
