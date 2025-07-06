@@ -61,7 +61,7 @@ export default function CreateScheduleDialog({ trigger }: CreateScheduleDialogPr
   const mutation = useMutation({
     mutationFn: async (data: ScheduleFormData) => {
       const scheduledDateTime = new Date(`${data.scheduledDate}T${data.scheduledTime}`);
-      const scheduleData: InsertUploadSchedule = {
+      const scheduleData: Partial<InsertUploadSchedule> = {
         title: data.title,
         projectId: data.projectId,
         scheduledDate: scheduledDateTime,

@@ -119,15 +119,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/upload-schedule", async (req, res) => {
+  app.post("/api/upload-schedule", isAuthenticated, async (req, res) => {
     try {
-      const validatedData = insertUploadScheduleSchema.parse(req.body);
-      const item = await storage.createUploadScheduleItem(validatedData);
+      const userId = req.user?.claims?.sub;
+      const scheduleData = { ...req.body, createdBy: userId };
+      const validatedData = insertUploadScheduleSchema.parse(scheduleData);
+      const item = await storage.createUploadScheduleItem(validatedData, userId);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid schedule data", errors: error.errors });
       }
+      console.error("Error creating schedule item:", error);
       res.status(500).json({ message: "Failed to create schedule item" });
     }
   });
