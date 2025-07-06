@@ -5,7 +5,8 @@ import {
   FolderKanban, 
   Calendar, 
   LogOut,
-  User
+  User,
+  Play
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,7 +24,12 @@ export default function Sidebar() {
   return (
     <div className="flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
       <div className="flex items-center h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">myteam.berlin</h1>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center justify-center w-8 h-8 bg-red-600 rounded-lg">
+            <Play className="w-4 h-4 text-white fill-white" />
+          </div>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Team Hub</h1>
+        </div>
       </div>
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navigation.map((item) => {

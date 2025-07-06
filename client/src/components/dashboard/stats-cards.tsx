@@ -7,6 +7,9 @@ interface StatsCardsProps {
     upcomingUploads: number;
     totalViews: number;
     teamMembers: number;
+    activeProjectsChange?: string;
+    totalViewsChange?: string;
+    teamMembersChange?: string;
   };
 }
 
@@ -15,7 +18,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
     {
       title: "Active Projects",
       value: stats.activeProjects,
-      change: "+2",
+      change: stats.activeProjectsChange || "+2",
       changeText: "from last month",
       icon: FolderOpen,
       iconBg: "bg-primary bg-opacity-10",
@@ -32,7 +35,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
     {
       title: "Total Views",
       value: `${(stats.totalViews / 1000000).toFixed(1)}M`,
-      change: "+15%",
+      change: stats.totalViewsChange || "+15%",
       changeText: "from last month",
       icon: Eye,
       iconBg: "bg-secondary bg-opacity-10",
@@ -41,6 +44,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
     {
       title: "Team Members",
       value: stats.teamMembers,
+      change: stats.teamMembersChange,
       changeText: "Active this week",
       icon: Users,
       iconBg: "bg-purple-100",

@@ -168,13 +168,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         new Date(s.scheduledDate) > new Date() && 
         new Date(s.scheduledDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       ).length;
-      const totalViews = projects.reduce((sum, p) => sum + p.monthlyViews, 0);
+      const totalViews = projects.reduce((sum, p) => sum + (p.monthlyViews || 0), 0);
       
       res.json({
         activeProjects,
         upcomingUploads,
         totalViews,
-        teamMembers: teamMembers.length
+        teamMembers: teamMembers.length,
+        activeProjectsChange: "+2",
+        totalViewsChange: "+15%",
+        teamMembersChange: "+3"
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
@@ -258,6 +261,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching YouTube videos:", error);
       res.status(500).json({ message: "Failed to fetch channel videos" });
+    }
+  });
+
+  // Description Templates routes
+  app.get("/api/description-templates", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      const templates = await storage.getDescriptionTemplates(projectId);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching description templates:", error);
+      res.status(500).json({ message: "Failed to fetch description templates" });
+    }
+  });
+
+  app.post("/api/description-templates", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const templateData = { ...req.body, createdBy: userId };
+      const template = await storage.createDescriptionTemplate(templateData);
+      res.json(template);
+    } catch (error) {
+      console.error("Error creating description template:", error);
+      res.status(500).json({ message: "Failed to create description template" });
+    }
+  });
+
+  app.put("/api/description-templates/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const template = await storage.updateDescriptionTemplate(id, req.body);
+      if (!template) {
+        return res.status(404).json({ message: "Description template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error("Error updating description template:", error);
+      res.status(500).json({ message: "Failed to update description template" });
+    }
+  });
+
+  app.delete("/api/description-templates/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteDescriptionTemplate(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Description template not found" });
+      }
+      res.json({ message: "Description template deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting description template:", error);
+      res.status(500).json({ message: "Failed to delete description template" });
     }
   });
 

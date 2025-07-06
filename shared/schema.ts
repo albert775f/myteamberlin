@@ -83,6 +83,15 @@ export const uploadSchedule = pgTable("upload_schedule", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const descriptionTemplates = pgTable("description_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  content: text("content").notNull(),
+  projectId: integer("project_id").references(() => projects.id),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").references(() => users.id),
@@ -117,6 +126,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   permissions: many(projectPermissions),
   uploadSchedule: many(uploadSchedule),
   activities: many(activities),
+  descriptionTemplates: many(descriptionTemplates),
 }));
 
 export const projectPermissionsRelations = relations(projectPermissions, ({ one }) => ({
@@ -130,6 +140,17 @@ export const projectPermissionsRelations = relations(projectPermissions, ({ one 
   }),
   grantedByUser: one(users, {
     fields: [projectPermissions.grantedBy],
+    references: [users.id],
+  }),
+}));
+
+export const descriptionTemplatesRelations = relations(descriptionTemplates, ({ one }) => ({
+  project: one(projects, {
+    fields: [descriptionTemplates.projectId],
+    references: [projects.id],
+  }),
+  createdBy: one(users, {
+    fields: [descriptionTemplates.createdBy],
     references: [users.id],
   }),
 }));
@@ -167,6 +188,11 @@ export const insertProjectPermissionSchema = createInsertSchema(projectPermissio
   createdAt: true,
 });
 
+export const insertDescriptionTemplateSchema = createInsertSchema(descriptionTemplates).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -186,6 +212,9 @@ export type InsertActivity = z.infer<typeof insertActivitySchema>;
 
 export type ProjectPermission = typeof projectPermissions.$inferSelect;
 export type InsertProjectPermission = z.infer<typeof insertProjectPermissionSchema>;
+
+export type DescriptionTemplate = typeof descriptionTemplates.$inferSelect;
+export type InsertDescriptionTemplate = z.infer<typeof insertDescriptionTemplateSchema>;
 
 // Extended types with relations
 export type ProjectWithMembers = Project & {

@@ -6,6 +6,7 @@ import {
   uploadSchedule, 
   activities,
   projectPermissions,
+  descriptionTemplates,
   type User,
   type UpsertUser,
   type Project, 
@@ -18,6 +19,8 @@ import {
   type InsertActivity,
   type ProjectPermission,
   type InsertProjectPermission,
+  type DescriptionTemplate,
+  type InsertDescriptionTemplate,
   type ProjectWithMembers,
   type UploadScheduleWithProject,
   type ActivityWithDetails
@@ -51,6 +54,13 @@ export interface IStorage {
   // Activities
   getActivities(limit?: number, userId?: string): Promise<ActivityWithDetails[]>;
   createActivity(activity: InsertActivity): Promise<Activity>;
+  
+  // Description Templates
+  getDescriptionTemplates(projectId?: number): Promise<DescriptionTemplate[]>;
+  getDescriptionTemplate(id: number): Promise<DescriptionTemplate | undefined>;
+  createDescriptionTemplate(template: InsertDescriptionTemplate): Promise<DescriptionTemplate>;
+  updateDescriptionTemplate(id: number, template: Partial<InsertDescriptionTemplate>): Promise<DescriptionTemplate | undefined>;
+  deleteDescriptionTemplate(id: number): Promise<boolean>;
   
   // Project Members & Permissions
   addProjectMember(projectId: number, memberId: number, userId: string): Promise<void>;
@@ -130,7 +140,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProject(id: number, userId: string): Promise<boolean> {
     const result = await db.delete(projects).where(eq(projects.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Team Members
@@ -253,6 +263,47 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return !!result;
+  }
+
+  // Description Templates
+  async getDescriptionTemplates(projectId?: number): Promise<DescriptionTemplate[]> {
+    const query = db.select().from(descriptionTemplates);
+    if (projectId) {
+      query.where(eq(descriptionTemplates.projectId, projectId));
+    }
+    return await query.orderBy(desc(descriptionTemplates.createdAt));
+  }
+
+  async getDescriptionTemplate(id: number): Promise<DescriptionTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(descriptionTemplates)
+      .where(eq(descriptionTemplates.id, id));
+    return template || undefined;
+  }
+
+  async createDescriptionTemplate(template: InsertDescriptionTemplate): Promise<DescriptionTemplate> {
+    const [newTemplate] = await db
+      .insert(descriptionTemplates)
+      .values(template)
+      .returning();
+    return newTemplate;
+  }
+
+  async updateDescriptionTemplate(id: number, template: Partial<InsertDescriptionTemplate>): Promise<DescriptionTemplate | undefined> {
+    const [updatedTemplate] = await db
+      .update(descriptionTemplates)
+      .set(template)
+      .where(eq(descriptionTemplates.id, id))
+      .returning();
+    return updatedTemplate || undefined;
+  }
+
+  async deleteDescriptionTemplate(id: number): Promise<boolean> {
+    const result = await db
+      .delete(descriptionTemplates)
+      .where(eq(descriptionTemplates.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   private async getProjectMembers(projectId: number): Promise<TeamMember[]> {

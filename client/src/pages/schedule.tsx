@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Calendar, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import CreateScheduleDialog from "@/components/schedule/create-schedule-dialog";
 import type { UploadScheduleWithProject } from "@shared/schema";
 
 export default function Schedule() {
@@ -52,10 +53,7 @@ export default function Schedule() {
       <main className="flex-1 overflow-y-auto p-6">
         <div className="mb-6 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900">Scheduled Uploads</h3>
-          <Button className="bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />
-            Schedule Upload
-          </Button>
+          <CreateScheduleDialog />
         </div>
         
         {schedule && schedule.length > 0 ? (
