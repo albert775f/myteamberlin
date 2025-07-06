@@ -23,11 +23,8 @@ export default function Sidebar() {
   return (
     <div className="flex flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
       <div className="flex items-center h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Team Hub
-        </h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">myteam.berlin</h1>
       </div>
-      
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navigation.map((item) => {
           const isActive = location === item.href;
@@ -48,7 +45,6 @@ export default function Sidebar() {
           );
         })}
       </nav>
-
       <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
         {user && (
           <div className="flex items-center mb-4 px-3 py-2">
