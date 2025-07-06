@@ -108,8 +108,12 @@ The application uses a relational database with the following main entities:
 
 ## Changelog
 
-- July 06, 2025. Initial setup
+- July 06, 2025: Initial setup with dashboard, project management, and scheduling features
+- July 06, 2025: Database implementation with PostgreSQL and Drizzle ORM
+- July 06, 2025: Authentication system integrated with Replit OAuth for internal employee access
+- July 06, 2025: Sample data seeded for demonstration purposes
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Target audience: Internal employees of myteam.berlin (not public-facing)
