@@ -57,11 +57,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/projects/:id", async (req, res) => {
+  app.put("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
       const validatedData = insertProjectSchema.partial().parse(req.body);
-      const project = await storage.updateProject(id, validatedData);
+      const project = await storage.updateProject(id, validatedData, userId);
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
@@ -74,10 +75,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/projects/:id", async (req, res) => {
+  app.delete("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const deleted = await storage.deleteProject(id);
+      const userId = req.user.claims.sub;
+      const deleted = await storage.deleteProject(id, userId);
       if (!deleted) {
         return res.status(404).json({ message: "Project not found" });
       }

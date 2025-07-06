@@ -74,7 +74,30 @@ export default function CreateProjectDialog({ trigger }: CreateProjectDialogProp
     },
   });
 
-  const onSubmit = (data: InsertProject) => {
+  const extractChannelFromUrl = async (url: string): Promise<string> => {
+    // Handle different YouTube URL formats on the frontend
+    if (url.includes("youtube.com/@")) {
+      return url.split("@")[1].split("/")[0];
+    }
+    if (url.includes("youtube.com/channel/")) {
+      return url.split("channel/")[1].split("/")[0];
+    }
+    if (url.includes("youtube.com/c/")) {
+      return url.split("c/")[1].split("/")[0];
+    }
+    if (url.includes("youtube.com/user/")) {
+      return url.split("user/")[1].split("/")[0];
+    }
+    return url;
+  };
+
+  const onSubmit = async (data: InsertProject) => {
+    // If a YouTube URL is provided, extract the channel info
+    if (data.youtubeChannelUrl) {
+      const channelInfo = await extractChannelFromUrl(data.youtubeChannelUrl);
+      data.youtubeChannelId = channelInfo;
+    }
+    
     mutation.mutate(data);
   };
 

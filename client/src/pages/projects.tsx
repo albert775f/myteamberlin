@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import ProjectCard from "@/components/projects/project-card";
 import CreateProjectDialog from "@/components/projects/create-project-dialog";
+import EditProjectDialog from "@/components/projects/edit-project-dialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ProjectWithMembers } from "@shared/schema";
 
 export default function Projects() {
+  const [editingProject, setEditingProject] = useState<ProjectWithMembers | null>(null);
+  
   const { data: projects, isLoading } = useQuery<ProjectWithMembers[]>({
     queryKey: ["/api/projects"],
   });
@@ -42,7 +46,11 @@ export default function Projects() {
         {projects && projects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard 
+                key={project.id} 
+                project={project} 
+                onEdit={setEditingProject}
+              />
             ))}
           </div>
         ) : (
@@ -56,6 +64,14 @@ export default function Projects() {
           </div>
         )}
       </main>
+      
+      {editingProject && (
+        <EditProjectDialog
+          project={editingProject}
+          open={!!editingProject}
+          onOpenChange={(open) => !open && setEditingProject(null)}
+        />
+      )}
     </div>
   );
 }

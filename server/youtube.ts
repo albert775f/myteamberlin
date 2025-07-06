@@ -119,6 +119,71 @@ export class YouTubeAPI {
     }
   }
 
+  async getChannelIdFromUrl(url: string): Promise<string | null> {
+    try {
+      // Handle different YouTube URL formats
+      if (url.includes("youtube.com/@")) {
+        // Handle @username format: https://www.youtube.com/@channelname
+        const username = url.split("@")[1].split("/")[0];
+        return await this.getChannelIdByUsername(username);
+      }
+      if (url.includes("youtube.com/channel/")) {
+        // Direct channel ID: https://www.youtube.com/channel/UC...
+        return url.split("channel/")[1].split("/")[0];
+      }
+      if (url.includes("youtube.com/c/")) {
+        // Custom URL format: https://www.youtube.com/c/customname
+        const customName = url.split("c/")[1].split("/")[0];
+        return await this.getChannelIdByCustomUrl(customName);
+      }
+      if (url.includes("youtube.com/user/")) {
+        // Legacy user format: https://www.youtube.com/user/username
+        const username = url.split("user/")[1].split("/")[0];
+        return await this.getChannelIdByUsername(username);
+      }
+      
+      // If it's just a plain username or custom name, try to find it
+      if (!url.includes("youtube.com")) {
+        return await this.getChannelIdByUsername(url);
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Error extracting channel ID from URL:", error);
+      return null;
+    }
+  }
+
+  async getChannelIdByUsername(username: string): Promise<string | null> {
+    try {
+      // Search for channels by name and try to find exact match
+      const searchResults = await this.searchChannels(username, 1);
+      if (searchResults.length > 0) {
+        return searchResults[0].id;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting channel ID by username:", error);
+      return null;
+    }
+  }
+
+  async getChannelIdByCustomUrl(customUrl: string): Promise<string | null> {
+    try {
+      // Try search approach for custom URLs
+      const searchResults = await this.searchChannels(customUrl, 5);
+      // Look for exact match in custom URL or title
+      const exactMatch = searchResults.find(channel => 
+        channel.customUrl?.toLowerCase() === customUrl.toLowerCase() ||
+        channel.title.toLowerCase() === customUrl.toLowerCase()
+      );
+      return exactMatch ? exactMatch.id : null;
+    } catch (error) {
+      console.error("Error getting channel ID by custom URL:", error);
+      return null;
+    }
+  }
+
   async getChannelDataByUsername(username: string): Promise<YouTubeChannelData | null> {
     try {
       const response = await fetch(
