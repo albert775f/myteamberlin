@@ -123,11 +123,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user?.claims?.sub;
       const scheduleData = { ...req.body, createdBy: userId };
+      console.log("Schedule data received:", JSON.stringify(scheduleData, null, 2));
+      
+      // Convert string date to Date object for validation
+      if (scheduleData.scheduledDate) {
+        scheduleData.scheduledDate = new Date(scheduleData.scheduledDate);
+      }
+      
       const validatedData = insertUploadScheduleSchema.parse(scheduleData);
       const item = await storage.createUploadScheduleItem(validatedData, userId);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("Validation errors:", error.errors);
         return res.status(400).json({ message: "Invalid schedule data", errors: error.errors });
       }
       console.error("Error creating schedule item:", error);
