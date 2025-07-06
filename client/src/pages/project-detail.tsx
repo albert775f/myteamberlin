@@ -209,8 +209,8 @@ export default function ProjectDetail() {
       </div>
 
       <Header
-        title={project.name}
-        description={`${project.category} • ${project.status}`}
+        title={project.name || "Loading..."}
+        description={project.category && project.status ? `${project.category} • ${project.status}` : "Loading project details..."}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

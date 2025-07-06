@@ -67,9 +67,9 @@ export default function Sidebar() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {user.firstName || user.lastName 
-                  ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
-                  : user.email}
+                {user.firstName && user.lastName 
+                  ? `${user.firstName} ${user.lastName}`.trim()
+                  : user.firstName || user.lastName || user.email || "User"}
               </p>
             </div>
           </div>

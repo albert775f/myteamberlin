@@ -8,7 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ProjectWithMembers, UploadScheduleWithProject, ActivityWithDetails } from "@shared/schema";
 
 export default function Dashboard() {
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<{
+    activeProjects: number;
+    upcomingUploads: number;
+    totalViews: number;
+    teamMembers: number;
+    activeProjectsChange?: string;
+    totalViewsChange?: string;
+    teamMembersChange?: string;
+  }>({
     queryKey: ["/api/dashboard/stats"],
   });
 
@@ -52,7 +60,12 @@ export default function Dashboard() {
         description="Welcome back! Here's what's happening with your projects."
       />
       <main className="flex-1 overflow-y-auto p-6 space-y-6">
-        <StatsCards stats={stats} />
+        <StatsCards stats={stats || {
+          activeProjects: 0,
+          upcomingUploads: 0,
+          totalViews: 0,
+          teamMembers: 0
+        }} />
         <ProjectHub projects={projects || []} />
         <UploadSchedule schedule={schedule || []} />
         <RecentActivity activities={activities || []} />
