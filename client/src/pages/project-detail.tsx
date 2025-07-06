@@ -38,17 +38,17 @@ export default function ProjectDetail() {
   const queryClient = useQueryClient();
 
   const { data: project, isLoading: projectLoading } = useQuery<ProjectWithMembers>({
-    queryKey: ["/api/projects", id],
+    queryKey: [`/api/projects/${id}`],
     enabled: !!id,
   });
 
   const { data: schedule } = useQuery<UploadScheduleWithProject[]>({
-    queryKey: ["/api/upload-schedule/project", id],
+    queryKey: [`/api/upload-schedule/project/${id}`],
     enabled: !!id,
   });
 
   const { data: templates } = useQuery<DescriptionTemplate[]>({
-    queryKey: ["/api/description-templates", id],
+    queryKey: [`/api/description-templates/${id}`],
     enabled: !!id,
   });
 
