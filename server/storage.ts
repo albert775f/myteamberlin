@@ -8,6 +8,10 @@ import {
   projectPermissions,
   descriptionTemplates,
   todos,
+  pinboardPages,
+  pinboardItems,
+  pinboardNotes,
+  pinboardPolls,
   type User,
   type UpsertUser,
   type Project, 
@@ -24,10 +28,20 @@ import {
   type InsertDescriptionTemplate,
   type Todo,
   type InsertTodo,
+  type PinboardPage,
+  type InsertPinboardPage,
+  type PinboardItem,
+  type InsertPinboardItem,
+  type PinboardNote,
+  type InsertPinboardNote,
+  type PinboardPoll,
+  type InsertPinboardPoll,
   type ProjectWithMembers,
   type UploadScheduleWithProject,
   type ActivityWithDetails,
-  type TodoWithDetails
+  type TodoWithDetails,
+  type PinboardPageWithItems,
+  type PinboardItemWithDetails
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, sql } from "drizzle-orm";
@@ -83,6 +97,30 @@ export interface IStorage {
   completeAllTicks(id: number, userId: string): Promise<Todo | undefined>;
   getAssignedTodos(userId: string): Promise<TodoWithDetails[]>;
   getCreatedTodos(userId: string): Promise<TodoWithDetails[]>;
+  
+  // Pinboard Pages
+  getPinboardPages(userId?: string): Promise<PinboardPageWithItems[]>;
+  getPinboardPage(id: number): Promise<PinboardPageWithItems | undefined>;
+  createPinboardPage(page: InsertPinboardPage): Promise<PinboardPage>;
+  updatePinboardPage(id: number, page: Partial<InsertPinboardPage>, userId: string): Promise<PinboardPage | undefined>;
+  deletePinboardPage(id: number, userId: string): Promise<boolean>;
+  
+  // Pinboard Items
+  getPinboardItems(pageId: number): Promise<PinboardItemWithDetails[]>;
+  createPinboardItem(item: InsertPinboardItem): Promise<PinboardItem>;
+  updatePinboardItem(id: number, item: Partial<InsertPinboardItem>, userId: string): Promise<PinboardItem | undefined>;
+  deletePinboardItem(id: number, userId: string): Promise<boolean>;
+  
+  // Pinboard Notes
+  createPinboardNote(note: InsertPinboardNote): Promise<PinboardNote>;
+  updatePinboardNote(id: number, note: Partial<InsertPinboardNote>, userId: string): Promise<PinboardNote | undefined>;
+  deletePinboardNote(id: number, userId: string): Promise<boolean>;
+  
+  // Pinboard Polls
+  createPinboardPoll(poll: InsertPinboardPoll): Promise<PinboardPoll>;
+  updatePinboardPoll(id: number, poll: Partial<InsertPinboardPoll>, userId: string): Promise<PinboardPoll | undefined>;
+  deletePinboardPoll(id: number, userId: string): Promise<boolean>;
+  votePinboardPoll(pollId: number, userId: string, optionIndex: number): Promise<PinboardPoll | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -563,6 +601,186 @@ export class DatabaseStorage implements IStorage {
       assignedByUser: item.users!, // This will be the current user
       project: item.projects || undefined,
     }));
+  }
+
+  // Pinboard Pages
+  async getPinboardPages(userId?: string): Promise<PinboardPageWithItems[]> {
+    const pages = await db.select().from(pinboardPages).orderBy(pinboardPages.pageNumber);
+    
+    const pagesWithItems = await Promise.all(
+      pages.map(async (page) => {
+        const items = await this.getPinboardItems(page.id);
+        const createdByUser = await this.getUser(page.createdBy);
+        
+        return {
+          ...page,
+          items,
+          createdBy: createdByUser!,
+        };
+      })
+    );
+    
+    return pagesWithItems;
+  }
+
+  async getPinboardPage(id: number): Promise<PinboardPageWithItems | undefined> {
+    const [page] = await db.select().from(pinboardPages).where(eq(pinboardPages.id, id));
+    if (!page) return undefined;
+    
+    const items = await this.getPinboardItems(page.id);
+    const createdByUser = await this.getUser(page.createdBy);
+    
+    return {
+      ...page,
+      items,
+      createdBy: createdByUser!,
+    };
+  }
+
+  async createPinboardPage(page: InsertPinboardPage): Promise<PinboardPage> {
+    const [newPage] = await db.insert(pinboardPages).values(page).returning();
+    return newPage;
+  }
+
+  async updatePinboardPage(id: number, page: Partial<InsertPinboardPage>, userId: string): Promise<PinboardPage | undefined> {
+    const [updatedPage] = await db
+      .update(pinboardPages)
+      .set({ ...page, updatedAt: new Date() })
+      .where(and(eq(pinboardPages.id, id), eq(pinboardPages.createdBy, userId)))
+      .returning();
+    
+    return updatedPage || undefined;
+  }
+
+  async deletePinboardPage(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(pinboardPages)
+      .where(and(eq(pinboardPages.id, id), eq(pinboardPages.createdBy, userId)));
+    
+    return result.rowCount > 0;
+  }
+
+  // Pinboard Items
+  async getPinboardItems(pageId: number): Promise<PinboardItemWithDetails[]> {
+    const items = await db
+      .select()
+      .from(pinboardItems)
+      .where(eq(pinboardItems.pageId, pageId))
+      .orderBy(pinboardItems.zIndex);
+    
+    const itemsWithDetails = await Promise.all(
+      items.map(async (item) => {
+        const createdByUser = await this.getUser(item.createdBy);
+        let note, poll, todo;
+        
+        if (item.itemType === 'note' && item.itemId) {
+          const [noteData] = await db.select().from(pinboardNotes).where(eq(pinboardNotes.id, item.itemId));
+          note = noteData;
+        } else if (item.itemType === 'poll' && item.itemId) {
+          const [pollData] = await db.select().from(pinboardPolls).where(eq(pinboardPolls.id, item.itemId));
+          poll = pollData;
+        } else if (item.itemType === 'todo' && item.itemId) {
+          todo = await this.getTodo(item.itemId);
+        }
+        
+        return {
+          ...item,
+          createdBy: createdByUser!,
+          note,
+          poll,
+          todo,
+        };
+      })
+    );
+    
+    return itemsWithDetails;
+  }
+
+  async createPinboardItem(item: InsertPinboardItem): Promise<PinboardItem> {
+    const [newItem] = await db.insert(pinboardItems).values(item).returning();
+    return newItem;
+  }
+
+  async updatePinboardItem(id: number, item: Partial<InsertPinboardItem>, userId: string): Promise<PinboardItem | undefined> {
+    const [updatedItem] = await db
+      .update(pinboardItems)
+      .set({ ...item, updatedAt: new Date() })
+      .where(and(eq(pinboardItems.id, id), eq(pinboardItems.createdBy, userId)))
+      .returning();
+    
+    return updatedItem || undefined;
+  }
+
+  async deletePinboardItem(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(pinboardItems)
+      .where(and(eq(pinboardItems.id, id), eq(pinboardItems.createdBy, userId)));
+    
+    return result.rowCount > 0;
+  }
+
+  // Pinboard Notes
+  async createPinboardNote(note: InsertPinboardNote): Promise<PinboardNote> {
+    const [newNote] = await db.insert(pinboardNotes).values(note).returning();
+    return newNote;
+  }
+
+  async updatePinboardNote(id: number, note: Partial<InsertPinboardNote>, userId: string): Promise<PinboardNote | undefined> {
+    const [updatedNote] = await db
+      .update(pinboardNotes)
+      .set({ ...note, updatedAt: new Date() })
+      .where(and(eq(pinboardNotes.id, id), eq(pinboardNotes.createdBy, userId)))
+      .returning();
+    
+    return updatedNote || undefined;
+  }
+
+  async deletePinboardNote(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(pinboardNotes)
+      .where(and(eq(pinboardNotes.id, id), eq(pinboardNotes.createdBy, userId)));
+    
+    return result.rowCount > 0;
+  }
+
+  // Pinboard Polls
+  async createPinboardPoll(poll: InsertPinboardPoll): Promise<PinboardPoll> {
+    const [newPoll] = await db.insert(pinboardPolls).values(poll).returning();
+    return newPoll;
+  }
+
+  async updatePinboardPoll(id: number, poll: Partial<InsertPinboardPoll>, userId: string): Promise<PinboardPoll | undefined> {
+    const [updatedPoll] = await db
+      .update(pinboardPolls)
+      .set({ ...poll, updatedAt: new Date() })
+      .where(and(eq(pinboardPolls.id, id), eq(pinboardPolls.createdBy, userId)))
+      .returning();
+    
+    return updatedPoll || undefined;
+  }
+
+  async deletePinboardPoll(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(pinboardPolls)
+      .where(and(eq(pinboardPolls.id, id), eq(pinboardPolls.createdBy, userId)));
+    
+    return result.rowCount > 0;
+  }
+
+  async votePinboardPoll(pollId: number, userId: string, optionIndex: number): Promise<PinboardPoll | undefined> {
+    const [poll] = await db.select().from(pinboardPolls).where(eq(pinboardPolls.id, pollId));
+    if (!poll) return undefined;
+    
+    const votes = (poll.votes as any) || {};
+    votes[userId] = optionIndex;
+    
+    const [updatedPoll] = await db
+      .update(pinboardPolls)
+      .set({ votes, updatedAt: new Date() })
+      .where(eq(pinboardPolls.id, pollId))
+      .returning();
+    
+    return updatedPoll || undefined;
   }
 }
 

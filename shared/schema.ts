@@ -120,6 +120,56 @@ export const todos = pgTable("todos", {
   completedAt: timestamp("completed_at"),
 });
 
+// Pinboard tables
+export const pinboardPages = pgTable("pinboard_pages", {
+  id: serial("id").primaryKey(),
+  pageNumber: integer("page_number").notNull(),
+  title: varchar("title", { length: 255 }).notNull().default("Untitled Page"),
+  backgroundColor: varchar("background_color", { length: 7 }).default("#ffffff"), // hex color
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const pinboardItems = pgTable("pinboard_items", {
+  id: serial("id").primaryKey(),
+  pageId: integer("page_id").notNull().references(() => pinboardPages.id, { onDelete: "cascade" }),
+  itemType: varchar("item_type", { length: 20 }).notNull(), // "todo", "poll", "note"
+  itemId: integer("item_id"), // references the actual item (todoId, pollId, noteId)
+  x: integer("x").notNull(), // horizontal position in pixels
+  y: integer("y").notNull(), // vertical position in pixels
+  width: integer("width").default(200), // width in pixels
+  height: integer("height").default(150), // height in pixels
+  zIndex: integer("z_index").default(0), // layering order
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const pinboardNotes = pgTable("pinboard_notes", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }),
+  content: text("content").notNull(),
+  backgroundColor: varchar("background_color", { length: 7 }).default("#ffeb3b"), // sticky note yellow
+  textColor: varchar("text_color", { length: 7 }).default("#000000"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const pinboardPolls = pgTable("pinboard_polls", {
+  id: serial("id").primaryKey(),
+  question: varchar("question", { length: 500 }).notNull(),
+  options: text("options").array().notNull(), // array of poll options
+  votes: jsonb("votes").default({}), // { userId: optionIndex }
+  allowMultipleVotes: boolean("allow_multiple_votes").default(false),
+  isAnonymous: boolean("is_anonymous").default(false),
+  expiresAt: timestamp("expires_at"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   teamMembers: many(teamMembers),
@@ -194,6 +244,40 @@ export const todosRelations = relations(todos, ({ one }) => ({
   }),
 }));
 
+// Pinboard relations
+export const pinboardPagesRelations = relations(pinboardPages, ({ one, many }) => ({
+  createdBy: one(users, {
+    fields: [pinboardPages.createdBy],
+    references: [users.id],
+  }),
+  items: many(pinboardItems),
+}));
+
+export const pinboardItemsRelations = relations(pinboardItems, ({ one }) => ({
+  page: one(pinboardPages, {
+    fields: [pinboardItems.pageId],
+    references: [pinboardPages.id],
+  }),
+  createdBy: one(users, {
+    fields: [pinboardItems.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const pinboardNotesRelations = relations(pinboardNotes, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [pinboardNotes.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const pinboardPollsRelations = relations(pinboardPolls, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [pinboardPolls.createdBy],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -239,6 +323,30 @@ export const insertTodoSchema = createInsertSchema(todos).omit({
   completedAt: true,
 });
 
+export const insertPinboardPageSchema = createInsertSchema(pinboardPages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPinboardItemSchema = createInsertSchema(pinboardItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPinboardNoteSchema = createInsertSchema(pinboardNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPinboardPollSchema = createInsertSchema(pinboardPolls).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -265,6 +373,18 @@ export type InsertDescriptionTemplate = z.infer<typeof insertDescriptionTemplate
 export type Todo = typeof todos.$inferSelect;
 export type InsertTodo = z.infer<typeof insertTodoSchema>;
 
+export type PinboardPage = typeof pinboardPages.$inferSelect;
+export type InsertPinboardPage = z.infer<typeof insertPinboardPageSchema>;
+
+export type PinboardItem = typeof pinboardItems.$inferSelect;
+export type InsertPinboardItem = z.infer<typeof insertPinboardItemSchema>;
+
+export type PinboardNote = typeof pinboardNotes.$inferSelect;
+export type InsertPinboardNote = z.infer<typeof insertPinboardNoteSchema>;
+
+export type PinboardPoll = typeof pinboardPolls.$inferSelect;
+export type InsertPinboardPoll = z.infer<typeof insertPinboardPollSchema>;
+
 // Extended types with relations
 export type ProjectWithMembers = Project & {
   members: TeamMember[];
@@ -284,4 +404,16 @@ export type TodoWithDetails = Todo & {
   assignedToUser: User;
   assignedByUser: User;
   project?: Project;
+};
+
+export type PinboardPageWithItems = PinboardPage & {
+  items: PinboardItemWithDetails[];
+  createdBy: User;
+};
+
+export type PinboardItemWithDetails = PinboardItem & {
+  createdBy: User;
+  note?: PinboardNote;
+  poll?: PinboardPoll;
+  todo?: TodoWithDetails;
 };

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertProjectSchema, insertUploadScheduleSchema, insertActivitySchema, insertDescriptionTemplateSchema, insertTodoSchema } from "@shared/schema";
+import { insertProjectSchema, insertUploadScheduleSchema, insertActivitySchema, insertDescriptionTemplateSchema, insertTodoSchema, insertPinboardPageSchema, insertPinboardItemSchema, insertPinboardNoteSchema, insertPinboardPollSchema } from "@shared/schema";
 import { z } from "zod";
 import { youtubeAPI } from "./youtube";
 
@@ -536,6 +536,264 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting todo:", error);
       res.status(500).json({ message: "Failed to delete todo" });
+    }
+  });
+
+  // Pinboard routes
+  app.get("/api/pinboard/pages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const pages = await storage.getPinboardPages(userId);
+      res.json(pages);
+    } catch (error) {
+      console.error("Error fetching pinboard pages:", error);
+      res.status(500).json({ message: "Failed to fetch pinboard pages" });
+    }
+  });
+
+  app.get("/api/pinboard/pages/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const page = await storage.getPinboardPage(id);
+      if (!page) {
+        return res.status(404).json({ message: "Page not found" });
+      }
+      res.json(page);
+    } catch (error) {
+      console.error("Error fetching pinboard page:", error);
+      res.status(500).json({ message: "Failed to fetch pinboard page" });
+    }
+  });
+
+  app.post("/api/pinboard/pages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertPinboardPageSchema.parse({
+        ...req.body,
+        createdBy: userId,
+      });
+      const page = await storage.createPinboardPage(validatedData);
+      res.status(201).json(page);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating pinboard page:", error);
+      res.status(500).json({ message: "Failed to create pinboard page" });
+    }
+  });
+
+  app.put("/api/pinboard/pages/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const validatedData = insertPinboardPageSchema.partial().parse(req.body);
+      const page = await storage.updatePinboardPage(id, validatedData, userId);
+      if (!page) {
+        return res.status(404).json({ message: "Page not found or access denied" });
+      }
+      res.json(page);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating pinboard page:", error);
+      res.status(500).json({ message: "Failed to update pinboard page" });
+    }
+  });
+
+  app.delete("/api/pinboard/pages/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const deleted = await storage.deletePinboardPage(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Page not found or access denied" });
+      }
+      res.json({ message: "Page deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting pinboard page:", error);
+      res.status(500).json({ message: "Failed to delete pinboard page" });
+    }
+  });
+
+  // Pinboard items
+  app.post("/api/pinboard/items", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertPinboardItemSchema.parse({
+        ...req.body,
+        createdBy: userId,
+      });
+      const item = await storage.createPinboardItem(validatedData);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating pinboard item:", error);
+      res.status(500).json({ message: "Failed to create pinboard item" });
+    }
+  });
+
+  app.put("/api/pinboard/items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const validatedData = insertPinboardItemSchema.partial().parse(req.body);
+      const item = await storage.updatePinboardItem(id, validatedData, userId);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found or access denied" });
+      }
+      res.json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating pinboard item:", error);
+      res.status(500).json({ message: "Failed to update pinboard item" });
+    }
+  });
+
+  app.delete("/api/pinboard/items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const deleted = await storage.deletePinboardItem(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Item not found or access denied" });
+      }
+      res.json({ message: "Item deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting pinboard item:", error);
+      res.status(500).json({ message: "Failed to delete pinboard item" });
+    }
+  });
+
+  // Pinboard notes
+  app.post("/api/pinboard/notes", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertPinboardNoteSchema.parse({
+        ...req.body,
+        createdBy: userId,
+      });
+      const note = await storage.createPinboardNote(validatedData);
+      res.status(201).json(note);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating pinboard note:", error);
+      res.status(500).json({ message: "Failed to create pinboard note" });
+    }
+  });
+
+  app.put("/api/pinboard/notes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const validatedData = insertPinboardNoteSchema.partial().parse(req.body);
+      const note = await storage.updatePinboardNote(id, validatedData, userId);
+      if (!note) {
+        return res.status(404).json({ message: "Note not found or access denied" });
+      }
+      res.json(note);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating pinboard note:", error);
+      res.status(500).json({ message: "Failed to update pinboard note" });
+    }
+  });
+
+  app.delete("/api/pinboard/notes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const deleted = await storage.deletePinboardNote(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Note not found or access denied" });
+      }
+      res.json({ message: "Note deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting pinboard note:", error);
+      res.status(500).json({ message: "Failed to delete pinboard note" });
+    }
+  });
+
+  // Pinboard polls
+  app.post("/api/pinboard/polls", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertPinboardPollSchema.parse({
+        ...req.body,
+        createdBy: userId,
+      });
+      const poll = await storage.createPinboardPoll(validatedData);
+      res.status(201).json(poll);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating pinboard poll:", error);
+      res.status(500).json({ message: "Failed to create pinboard poll" });
+    }
+  });
+
+  app.put("/api/pinboard/polls/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const validatedData = insertPinboardPollSchema.partial().parse(req.body);
+      const poll = await storage.updatePinboardPoll(id, validatedData, userId);
+      if (!poll) {
+        return res.status(404).json({ message: "Poll not found or access denied" });
+      }
+      res.json(poll);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating pinboard poll:", error);
+      res.status(500).json({ message: "Failed to update pinboard poll" });
+    }
+  });
+
+  app.delete("/api/pinboard/polls/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const deleted = await storage.deletePinboardPoll(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Poll not found or access denied" });
+      }
+      res.json({ message: "Poll deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting pinboard poll:", error);
+      res.status(500).json({ message: "Failed to delete pinboard poll" });
+    }
+  });
+
+  app.post("/api/pinboard/polls/:id/vote", isAuthenticated, async (req: any, res) => {
+    try {
+      const pollId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { optionIndex } = req.body;
+      
+      if (typeof optionIndex !== 'number') {
+        return res.status(400).json({ message: "Option index is required" });
+      }
+      
+      const poll = await storage.votePinboardPoll(pollId, userId, optionIndex);
+      if (!poll) {
+        return res.status(404).json({ message: "Poll not found" });
+      }
+      res.json(poll);
+    } catch (error) {
+      console.error("Error voting on poll:", error);
+      res.status(500).json({ message: "Failed to vote on poll" });
     }
   });
 
