@@ -286,7 +286,7 @@ export default function Pinboard() {
     });
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: any) => {
     if (!dragState.isDragging || !dragState.itemId) return;
 
     e.preventDefault();

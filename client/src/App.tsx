@@ -9,6 +9,7 @@ import Projects from "@/pages/projects";
 import ProjectDetail from "@/pages/project-detail";
 import Schedule from "@/pages/schedule";
 import Todos from "@/pages/todos";
+import Pinboard from "@/pages/pinboard";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
@@ -43,6 +44,7 @@ function Router() {
           <Route path="/projects/:id" component={ProjectDetail} />
           <Route path="/schedule" component={Schedule} />
           <Route path="/todos" component={Todos} />
+          <Route path="/pinboard" component={Pinboard} />
           <Route component={NotFound} />
         </Switch>
       </main>

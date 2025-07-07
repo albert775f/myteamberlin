@@ -7,7 +7,8 @@ import {
   CheckSquare,
   LogOut,
   User,
-  Play
+  Play,
+  Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +18,7 @@ const navigation = [
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Schedule", href: "/schedule", icon: Calendar },
   { name: "To-Dos", href: "/todos", icon: CheckSquare },
+  { name: "Pinboard", href: "/pinboard", icon: Layers },
 ];
 
 export default function Sidebar() {
