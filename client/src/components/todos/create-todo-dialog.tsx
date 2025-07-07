@@ -57,9 +57,11 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
 
   const createTodoMutation = useMutation({
     mutationFn: async (todo: TodoFormData) => {
+      console.log("Creating todo with data:", todo);
       return apiRequest("POST", "/api/todos", todo);
     },
     onSuccess: () => {
+      console.log("Todo created successfully");
       queryClient.invalidateQueries({ queryKey: ["/api/todos"] });
       setOpen(false);
       form.reset();
@@ -69,15 +71,18 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
       });
     },
     onError: (error) => {
+      console.error("Error creating todo:", error);
       toast({
         title: "Error",
-        description: "Failed to create todo. Please try again.",
+        description: `Failed to create todo: ${error.message}`,
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = async (data: TodoFormData) => {
+    console.log("Form submitted with data:", data);
+    console.log("Form errors:", form.formState.errors);
     createTodoMutation.mutate(data);
   };
 
