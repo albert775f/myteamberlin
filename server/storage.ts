@@ -102,6 +102,19 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
+    
+    // Also create or update team member entry for this user
+    await db
+      .insert(teamMembers)
+      .values({
+        userId: user.id,
+        name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Unknown User',
+        email: user.email || '',
+        role: 'member',
+        avatarUrl: user.profileImageUrl,
+      })
+      .onConflictDoNothing();
+    
     return user;
   }
 
@@ -159,7 +172,33 @@ export class DatabaseStorage implements IStorage {
 
   // Team Members
   async getTeamMembers(): Promise<TeamMember[]> {
+    // First ensure all users are synced as team members
+    await this.syncUsersAsTeamMembers();
     return await db.select().from(teamMembers).where(eq(teamMembers.isActive, true));
+  }
+
+  private async syncUsersAsTeamMembers(): Promise<void> {
+    // Get all users
+    const allUsers = await db.select().from(users);
+    
+    // Get existing team member user IDs
+    const existingTeamMembers = await db.select({ userId: teamMembers.userId }).from(teamMembers);
+    const existingUserIds = new Set(existingTeamMembers.map(tm => tm.userId));
+    
+    // Create team member entries for users who don't have one
+    for (const user of allUsers) {
+      if (!existingUserIds.has(user.id)) {
+        await db
+          .insert(teamMembers)
+          .values({
+            userId: user.id,
+            name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Unknown User',
+            email: user.email || '',
+            role: 'member',
+            avatarUrl: user.profileImageUrl,
+          });
+      }
+    }
   }
 
   async getTeamMember(id: number): Promise<TeamMember | undefined> {

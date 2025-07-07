@@ -342,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: member.email,
         firstName: member.name?.split(' ')[0] || null,
         lastName: member.name?.split(' ').slice(1).join(' ') || null,
-        profileImageUrl: member.avatar,
+        profileImageUrl: member.avatarUrl,
       }));
       res.json(users);
     } catch (error) {
