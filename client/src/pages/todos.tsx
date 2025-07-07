@@ -53,12 +53,42 @@ export default function Todos() {
     },
   });
 
+  const addTickMutation = useMutation({
+    mutationFn: async (todoId: number) => {
+      return apiRequest(`/api/todos/${todoId}/tick`, {
+        method: "PUT",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/todos"] });
+    },
+  });
+
+  const completeAllTicksMutation = useMutation({
+    mutationFn: async (todoId: number) => {
+      return apiRequest(`/api/todos/${todoId}/complete-all`, {
+        method: "PUT",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/todos"] });
+    },
+  });
+
   const handleCompleteTodo = (todoId: number) => {
     completeTodoMutation.mutate(todoId);
   };
 
   const handleDeleteTodo = (todoId: number) => {
     deleteTodoMutation.mutate(todoId);
+  };
+
+  const handleAddTick = (todoId: number) => {
+    addTickMutation.mutate(todoId);
+  };
+
+  const handleCompleteAllTicks = (todoId: number) => {
+    completeAllTicksMutation.mutate(todoId);
   };
 
   // Filter todos based on current filters
@@ -202,6 +232,8 @@ export default function Todos() {
                     viewMode={viewMode}
                     onComplete={handleCompleteTodo}
                     onDelete={handleDeleteTodo}
+                    onTick={handleAddTick}
+                    onCompleteAll={handleCompleteAllTicks}
                     showAssignedBy={true}
                   />
                 ))}
@@ -229,6 +261,8 @@ export default function Todos() {
                     viewMode={viewMode}
                     onComplete={handleCompleteTodo}
                     onDelete={handleDeleteTodo}
+                    onTick={handleAddTick}
+                    onCompleteAll={handleCompleteAllTicks}
                     showAssignedBy={false}
                   />
                 ))}

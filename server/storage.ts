@@ -79,6 +79,8 @@ export interface IStorage {
   updateTodo(id: number, todo: Partial<InsertTodo>): Promise<Todo | undefined>;
   deleteTodo(id: number, userId: string): Promise<boolean>;
   markTodoComplete(id: number, userId: string): Promise<Todo | undefined>;
+  addTodoTick(id: number, userId: string): Promise<Todo | undefined>;
+  completeAllTicks(id: number, userId: string): Promise<Todo | undefined>;
   getAssignedTodos(userId: string): Promise<TodoWithDetails[]>;
   getCreatedTodos(userId: string): Promise<TodoWithDetails[]>;
 }
@@ -492,6 +494,53 @@ export class DatabaseStorage implements IStorage {
         eq(todos.assignedTo, userId)
       ))
       .returning();
+    return updatedTodo || undefined;
+  }
+
+  async addTodoTick(id: number, userId: string): Promise<Todo | undefined> {
+    // Get current todo
+    const [todo] = await db
+      .select()
+      .from(todos)
+      .where(and(
+        eq(todos.id, id),
+        eq(todos.assignedTo, userId)
+      ));
+    
+    if (!todo) return undefined;
+    
+    const newTicks = Math.min(todo.currentTicks + 1, todo.totalTicks);
+    const isCompleted = newTicks >= todo.totalTicks;
+    
+    const [updatedTodo] = await db
+      .update(todos)
+      .set({
+        currentTicks: newTicks,
+        status: isCompleted ? 'completed' : 'in_progress',
+        completedAt: isCompleted ? new Date() : null,
+        updatedAt: new Date()
+      })
+      .where(eq(todos.id, id))
+      .returning();
+    
+    return updatedTodo || undefined;
+  }
+
+  async completeAllTicks(id: number, userId: string): Promise<Todo | undefined> {
+    const [updatedTodo] = await db
+      .update(todos)
+      .set({
+        currentTicks: sql`${todos.totalTicks}`,
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(todos.id, id),
+        eq(todos.assignedTo, userId)
+      ))
+      .returning();
+    
     return updatedTodo || undefined;
   }
 

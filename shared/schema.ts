@@ -113,6 +113,8 @@ export const todos = pgTable("todos", {
   projectId: integer("project_id").references(() => projects.id), // null for general todos
   isPrivate: boolean("is_private").default(false), // private todos are only visible to creator and assignee
   visibleTo: text("visible_to").array().default([]), // additional users who can see this todo
+  totalTicks: integer("total_ticks").default(1).notNull(), // number of ticks required to complete
+  currentTicks: integer("current_ticks").default(0).notNull(), // number of ticks completed
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   completedAt: timestamp("completed_at"),

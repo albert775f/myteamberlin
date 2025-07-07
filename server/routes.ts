@@ -494,6 +494,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/todos/:id/tick", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const todo = await storage.addTodoTick(id, userId);
+      if (!todo) {
+        return res.status(404).json({ message: "Todo not found or access denied" });
+      }
+      res.json(todo);
+    } catch (error) {
+      console.error("Error adding tick:", error);
+      res.status(500).json({ message: "Failed to add tick" });
+    }
+  });
+
+  app.put("/api/todos/:id/complete-all", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const todo = await storage.completeAllTicks(id, userId);
+      if (!todo) {
+        return res.status(404).json({ message: "Todo not found or access denied" });
+      }
+      res.json(todo);
+    } catch (error) {
+      console.error("Error completing all ticks:", error);
+      res.status(500).json({ message: "Failed to complete all ticks" });
+    }
+  });
+
   app.delete("/api/todos/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);

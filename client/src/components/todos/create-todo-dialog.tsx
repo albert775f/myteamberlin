@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarIcon, Plus, Eye, EyeOff } from "lucide-react";
+import { CalendarIcon, Plus, Eye, EyeOff, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { insertTodoSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -153,6 +153,34 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="totalTicks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <CheckSquare className="w-4 h-4" />
+                      Completion Ticks
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number"
+                        min="1"
+                        max="100"
+                        placeholder="1"
+                        {...field}
+                        value={field.value || 1}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-sm text-gray-500">
+                      Number of ticks required to complete this task (e.g., "Find 20 names" = 20 ticks)
+                    </p>
                   </FormItem>
                 )}
               />

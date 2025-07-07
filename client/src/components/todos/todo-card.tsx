@@ -22,6 +22,8 @@ interface TodoCardProps {
   viewMode: "grid" | "list";
   onComplete: (todoId: number) => void;
   onDelete: (todoId: number) => void;
+  onTick: (todoId: number) => void;
+  onCompleteAll: (todoId: number) => void;
   showAssignedBy: boolean;
 }
 
@@ -30,6 +32,8 @@ export default function TodoCard({
   viewMode, 
   onComplete, 
   onDelete, 
+  onTick,
+  onCompleteAll,
   showAssignedBy 
 }: TodoCardProps) {
   
@@ -134,20 +138,53 @@ export default function TodoCard({
                       <span>to {todo.assignedToUser.firstName || todo.assignedToUser.email}</span>
                     </div>
                   )}
+                  
+                  {(todo.totalTicks || 1) > 1 && (
+                    <div className="flex items-center space-x-1 text-blue-600">
+                      <CheckSquare className="w-4 h-4" />
+                      <span>{todo.currentTicks || 0}/{todo.totalTicks || 1} ticks</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
             
             <div className="flex items-center space-x-2">
               {todo.status !== 'completed' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onComplete(todo.id)}
-                  className="text-green-600 hover:text-green-700"
-                >
-                  <CheckSquare className="w-4 h-4" />
-                </Button>
+                <>
+                  {(todo.totalTicks || 1) > 1 ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onTick(todo.id)}
+                        className="text-blue-600 hover:text-blue-700"
+                        title="Add one tick"
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onCompleteAll(todo.id)}
+                        className="text-green-600 hover:text-green-700"
+                        title="Complete all ticks"
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                        <CheckSquare className="w-4 h-4 -ml-2" />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onComplete(todo.id)}
+                      className="text-green-600 hover:text-green-700"
+                    >
+                      <CheckSquare className="w-4 h-4" />
+                    </Button>
+                  )}
+                </>
               )}
               <Button
                 size="sm"
@@ -186,14 +223,40 @@ export default function TodoCard({
           
           <div className="flex items-center space-x-1">
             {todo.status !== 'completed' && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onComplete(todo.id)}
-                className="text-green-600 hover:text-green-700 h-8 w-8 p-0"
-              >
-                <CheckSquare className="w-4 h-4" />
-              </Button>
+              <>
+                {(todo.totalTicks || 1) > 1 ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onTick(todo.id)}
+                      className="text-blue-600 hover:text-blue-700 h-8 w-8 p-0"
+                      title="Add one tick"
+                    >
+                      <CheckSquare className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onCompleteAll(todo.id)}
+                      className="text-green-600 hover:text-green-700 h-8 w-8 p-0"
+                      title="Complete all ticks"
+                    >
+                      <CheckSquare className="w-4 h-4" />
+                      <CheckSquare className="w-4 h-4 -ml-2" />
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onComplete(todo.id)}
+                    className="text-green-600 hover:text-green-700 h-8 w-8 p-0"
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                  </Button>
+                )}
+              </>
             )}
             <Button
               size="sm"
@@ -228,6 +291,13 @@ export default function TodoCard({
               <Calendar className="w-4 h-4" />
               <span>Due {formatDueDate(todo.dueDate)}</span>
               {isOverdue(todo.dueDate) && <span className="text-red-600 font-medium">(Overdue)</span>}
+            </div>
+          )}
+          
+          {(todo.totalTicks || 1) > 1 && (
+            <div className="flex items-center space-x-2 text-sm text-blue-600">
+              <CheckSquare className="w-4 h-4" />
+              <span>{todo.currentTicks || 0}/{todo.totalTicks || 1} ticks completed</span>
             </div>
           )}
           
