@@ -1,32 +1,49 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Calendar, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, CalendarIcon, Clock, List } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import CreateScheduleDialog from "@/components/schedule/create-schedule-dialog";
+import CalendarView from "@/components/schedule/calendar";
 import type { UploadScheduleWithProject } from "@shared/schema";
 
 export default function Schedule() {
+  const [activeTab, setActiveTab] = useState("calendar");
+  
   const { data: schedule, isLoading } = useQuery<UploadScheduleWithProject[]>({
     queryKey: ["/api/upload-schedule"],
   });
 
-  const formatDate = (date: Date) => {
+  // Convert schedule data to calendar events format
+  const calendarEvents = schedule?.map(item => ({
+    date: new Date(item.scheduledDate),
+    title: item.title,
+    project: item.project.name,
+    id: item.id,
+    status: item.status,
+    description: item.description
+  })) || [];
+
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
     return new Intl.DateTimeFormat("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
-    }).format(new Date(date));
+    }).format(dateObj);
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
     return new Intl.DateTimeFormat("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
-    }).format(new Date(date));
+    }).format(dateObj);
   };
 
   if (isLoading) {
@@ -56,51 +73,72 @@ export default function Schedule() {
           <CreateScheduleDialog />
         </div>
         
-        {schedule && schedule.length > 0 ? (
-          <div className="space-y-4">
-            {schedule.map((item) => (
-              <Card key={item.id} className="shadow-sm">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <img 
-                        src={item.project.thumbnailUrl || "https://images.unsplash.com/photo-1611224923853-80b023f02d71?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100"}
-                        alt={item.project.name}
-                        className="w-16 h-16 rounded-lg object-cover"
-                      />
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900">{item.title}</h4>
-                        <p className="text-sm text-gray-500">{item.project.name} • {item.project.category}</p>
-                        {item.description && (
-                          <p className="text-sm text-gray-600 mt-1">{item.description}</p>
-                        )}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4" />
+              Calendar View
+            </TabsTrigger>
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <List className="w-4 h-4" />
+              List View
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="calendar" className="mt-6">
+            <CalendarView events={calendarEvents} />
+          </TabsContent>
+          
+          <TabsContent value="list" className="mt-6">
+            {schedule && schedule.length > 0 ? (
+              <div className="space-y-4">
+                {schedule.map((item) => (
+                  <Card key={item.id} className="shadow-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <img 
+                            src={item.project.thumbnailUrl || "https://images.unsplash.com/photo-1611224923853-80b023f02d71?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100"}
+                            alt={item.project.name}
+                            className="w-16 h-16 rounded-lg object-cover"
+                          />
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">{item.title}</h4>
+                            <p className="text-sm text-gray-500">{item.project.name} • {item.project.category}</p>
+                            {item.description && (
+                              <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
+                            <CalendarIcon className="w-4 h-4" />
+                            <span>{formatDate(item.scheduledDate)}</span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Clock className="w-4 h-4" />
+                            <span>{formatTime(item.scheduledDate)}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>{formatDate(item.scheduledDate)}</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <Clock className="w-4 h-4" />
-                        <span>{formatTime(item.scheduledDate)}</span>
-                      </div>
-                    </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="shadow-sm">
+                <CardContent className="p-6 text-center">
+                  <div className="text-gray-500 mb-4">
+                    <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-lg font-medium mb-2">No uploads scheduled</p>
+                    <p>Create your first scheduled upload to get started.</p>
                   </div>
+                  <CreateScheduleDialog />
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="text-gray-500 text-lg mb-4">No scheduled uploads</div>
-            <p className="text-gray-400 mb-6">Schedule your first upload to get started</p>
-            <Button className="bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4 mr-2" />
-              Schedule First Upload
-            </Button>
-          </div>
-        )}
+            )}
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

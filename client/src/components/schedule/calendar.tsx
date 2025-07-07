@@ -3,12 +3,17 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+interface CalendarEvent {
+  date: Date;
+  title: string;
+  project: string;
+  id: number;
+  status: string;
+  description?: string;
+}
+
 interface CalendarProps {
-  events?: Array<{
-    date: Date;
-    title: string;
-    project: string;
-  }>;
+  events?: CalendarEvent[];
 }
 
 export default function Calendar({ events = [] }: CalendarProps) {
@@ -76,14 +81,45 @@ export default function Calendar({ events = [] }: CalendarProps) {
                            today.getMonth() === currentDate.getMonth() && 
                            today.getFullYear() === currentDate.getFullYear();
             
+            // Find events for this day
+            const dayEvents = events.filter(event => {
+              const eventDate = new Date(event.date);
+              return eventDate.getDate() === day &&
+                     eventDate.getMonth() === currentDate.getMonth() &&
+                     eventDate.getFullYear() === currentDate.getFullYear();
+            });
+            
             return (
               <div
                 key={day}
-                className={`p-2 text-sm cursor-pointer hover:bg-gray-100 rounded ${
-                  isToday ? "bg-primary text-white rounded-full" : "text-gray-900"
+                className={`p-1 text-sm cursor-pointer hover:bg-gray-100 rounded min-h-[80px] flex flex-col ${
+                  isToday ? "bg-blue-50 border border-blue-200" : ""
                 }`}
               >
-                {day}
+                <div className={`text-center mb-1 ${
+                  isToday ? "bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center mx-auto text-xs" : "text-gray-900"
+                }`}>
+                  {day}
+                </div>
+                <div className="space-y-1">
+                  {dayEvents.slice(0, 2).map((event, idx) => (
+                    <div
+                      key={idx}
+                      className={`text-xs p-1 rounded text-white truncate ${
+                        event.status === 'published' ? 'bg-green-500' :
+                        event.status === 'scheduled' ? 'bg-blue-500' : 'bg-gray-500'
+                      }`}
+                      title={`${event.title} - ${event.project}`}
+                    >
+                      {event.title}
+                    </div>
+                  ))}
+                  {dayEvents.length > 2 && (
+                    <div className="text-xs text-gray-500 text-center">
+                      +{dayEvents.length - 2} more
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
