@@ -24,7 +24,15 @@ export default function Todos() {
 
   const { data: todos, isLoading } = useQuery<TodoWithDetails[]>({
     queryKey: ["/api/todos", { filter: activeTab }],
-    queryFn: () => apiRequest(`/api/todos?filter=${activeTab}`),
+    queryFn: async () => {
+      const res = await fetch(`/api/todos?filter=${activeTab}`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${res.statusText}`);
+      }
+      return res.json();
+    },
   });
 
   const { data: projects } = useQuery<ProjectWithMembers[]>({
@@ -33,9 +41,7 @@ export default function Todos() {
 
   const completeTodoMutation = useMutation({
     mutationFn: async (todoId: number) => {
-      return apiRequest(`/api/todos/${todoId}/complete`, {
-        method: "PUT",
-      });
+      return apiRequest("PUT", `/api/todos/${todoId}/complete`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/todos"] });
@@ -44,9 +50,7 @@ export default function Todos() {
 
   const deleteTodoMutation = useMutation({
     mutationFn: async (todoId: number) => {
-      return apiRequest(`/api/todos/${todoId}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/todos/${todoId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/todos"] });
@@ -55,9 +59,7 @@ export default function Todos() {
 
   const addTickMutation = useMutation({
     mutationFn: async (todoId: number) => {
-      return apiRequest(`/api/todos/${todoId}/tick`, {
-        method: "PUT",
-      });
+      return apiRequest("PUT", `/api/todos/${todoId}/tick`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/todos"] });
@@ -66,9 +68,7 @@ export default function Todos() {
 
   const completeAllTicksMutation = useMutation({
     mutationFn: async (todoId: number) => {
-      return apiRequest(`/api/todos/${todoId}/complete-all`, {
-        method: "PUT",
-      });
+      return apiRequest("PUT", `/api/todos/${todoId}/complete-all`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/todos"] });

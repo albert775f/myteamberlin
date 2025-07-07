@@ -57,10 +57,7 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
 
   const createTodoMutation = useMutation({
     mutationFn: async (todo: TodoFormData) => {
-      return apiRequest("/api/todos", {
-        method: "POST",
-        body: JSON.stringify(todo),
-      });
+      return apiRequest("POST", "/api/todos", todo);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/todos"] });
