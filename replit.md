@@ -135,6 +135,38 @@ The application uses a relational database with the following main entities:
 - Added `youtubeChannelUrl` field for channel links
 - Added `lastSyncedAt` timestamp for tracking sync status
 
+## To-Do System
+
+### Features Implemented
+- **Personal Task Management**: Users can create and manage personal to-dos
+- **User Assignment**: Assign tasks to any team member in the system
+- **Project-Specific Tasks**: Link tasks to specific projects or keep them as general tasks
+- **Priority Levels**: Four priority levels (low, medium, high, urgent) with color coding
+- **Status Tracking**: Track task status (pending, in_progress, completed)
+- **Due Dates**: Optional due date setting with overdue indicators
+- **Filtering & Views**: Filter by status, priority, project; toggle between grid and list views
+- **Assignment Views**: Separate tabs for "Assigned to Me" and "Created by Me"
+
+### Database Schema Updates
+- Added `todos` table with fields for title, description, status, priority, due dates
+- User assignment with `assignedTo` and `assignedBy` foreign keys
+- Optional project association via `projectId` foreign key
+- Automatic timestamp tracking for creation, updates, and completion
+
+### API Endpoints
+- `GET /api/todos` - Fetch todos with filtering options
+- `POST /api/todos` - Create new todo
+- `PUT /api/todos/:id` - Update todo
+- `PUT /api/todos/:id/complete` - Mark todo as completed
+- `DELETE /api/todos/:id` - Delete todo
+- `GET /api/users` - Fetch users for assignment dropdown
+
+### Frontend Components
+- **Todo Page**: Complete task management interface with tabs and filtering
+- **Create Todo Dialog**: Form for creating new tasks with all options
+- **Todo Card**: Display component with grid/list view support
+- **Navigation**: Added to sidebar with CheckSquare icon
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

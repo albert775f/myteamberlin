@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
   FolderKanban, 
-  Calendar, 
+  Calendar,
+  CheckSquare,
   LogOut,
   User,
   Play
@@ -15,6 +16,7 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Schedule", href: "/schedule", icon: Calendar },
+  { name: "To-Dos", href: "/todos", icon: CheckSquare },
 ];
 
 export default function Sidebar() {

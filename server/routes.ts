@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertProjectSchema, insertUploadScheduleSchema, insertActivitySchema, insertDescriptionTemplateSchema } from "@shared/schema";
+import { insertProjectSchema, insertUploadScheduleSchema, insertActivitySchema, insertDescriptionTemplateSchema, insertTodoSchema } from "@shared/schema";
 import { z } from "zod";
 import { youtubeAPI } from "./youtube";
 
@@ -332,6 +332,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Users endpoint for todo assignment
+  app.get("/api/users", isAuthenticated, async (req, res) => {
+    try {
+      const members = await storage.getTeamMembers();
+      // Convert team members to user format for todo assignment
+      const users = members.map(member => ({
+        id: member.userId,
+        email: member.email,
+        firstName: member.name?.split(' ')[0] || null,
+        lastName: member.name?.split(' ').slice(1).join(' ') || null,
+        profileImageUrl: member.avatar,
+      }));
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // Description Templates routes
   app.get("/api/description-templates", isAuthenticated, async (req, res) => {
     try {
@@ -381,6 +400,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting description template:", error);
       res.status(500).json({ message: "Failed to delete description template" });
+    }
+  });
+
+  // Todo routes
+  app.get("/api/todos", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      const filter = req.query.filter as string;
+      
+      let todos;
+      if (filter === 'assigned') {
+        todos = await storage.getAssignedTodos(userId);
+      } else if (filter === 'created') {
+        todos = await storage.getCreatedTodos(userId);
+      } else {
+        todos = await storage.getTodos(userId, projectId);
+      }
+      
+      res.json(todos);
+    } catch (error) {
+      console.error("Error fetching todos:", error);
+      res.status(500).json({ message: "Failed to fetch todos" });
+    }
+  });
+
+  app.get("/api/todos/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const todo = await storage.getTodo(id);
+      if (!todo) {
+        return res.status(404).json({ message: "Todo not found" });
+      }
+      res.json(todo);
+    } catch (error) {
+      console.error("Error fetching todo:", error);
+      res.status(500).json({ message: "Failed to fetch todo" });
+    }
+  });
+
+  app.post("/api/todos", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertTodoSchema.parse({
+        ...req.body,
+        assignedBy: userId
+      });
+      
+      console.log("Todo data received:", validatedData);
+      
+      const todo = await storage.createTodo(validatedData);
+      res.status(201).json(todo);
+    } catch (error) {
+      console.error("Error creating todo:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid todo data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create todo" });
+    }
+  });
+
+  app.put("/api/todos/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertTodoSchema.partial().parse(req.body);
+      const todo = await storage.updateTodo(id, validatedData);
+      if (!todo) {
+        return res.status(404).json({ message: "Todo not found" });
+      }
+      res.json(todo);
+    } catch (error) {
+      console.error("Error updating todo:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid todo data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update todo" });
+    }
+  });
+
+  app.put("/api/todos/:id/complete", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const todo = await storage.markTodoComplete(id, userId);
+      if (!todo) {
+        return res.status(404).json({ message: "Todo not found or access denied" });
+      }
+      res.json(todo);
+    } catch (error) {
+      console.error("Error completing todo:", error);
+      res.status(500).json({ message: "Failed to complete todo" });
+    }
+  });
+
+  app.delete("/api/todos/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const deleted = await storage.deleteTodo(id, userId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Todo not found or access denied" });
+      }
+      res.json({ message: "Todo deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting todo:", error);
+      res.status(500).json({ message: "Failed to delete todo" });
     }
   });
 

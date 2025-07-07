@@ -101,6 +101,21 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const todos = pgTable("todos", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, in_progress, completed
+  priority: varchar("priority", { length: 20 }).notNull().default("medium"), // low, medium, high, urgent
+  dueDate: timestamp("due_date"),
+  assignedTo: varchar("assigned_to").notNull().references(() => users.id),
+  assignedBy: varchar("assigned_by").notNull().references(() => users.id),
+  projectId: integer("project_id").references(() => projects.id), // null for general todos
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   teamMembers: many(teamMembers),
@@ -108,6 +123,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   projectPermissions: many(projectPermissions),
   uploadSchedule: many(uploadSchedule),
   activities: many(activities),
+  assignedTodos: many(todos, { relationName: "assignedTodos" }),
+  createdTodos: many(todos, { relationName: "createdTodos" }),
 }));
 
 export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
@@ -127,6 +144,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   uploadSchedule: many(uploadSchedule),
   activities: many(activities),
   descriptionTemplates: many(descriptionTemplates),
+  todos: many(todos),
 }));
 
 export const projectPermissionsRelations = relations(projectPermissions, ({ one }) => ({
@@ -152,6 +170,23 @@ export const descriptionTemplatesRelations = relations(descriptionTemplates, ({ 
   createdBy: one(users, {
     fields: [descriptionTemplates.createdBy],
     references: [users.id],
+  }),
+}));
+
+export const todosRelations = relations(todos, ({ one }) => ({
+  assignedToUser: one(users, {
+    fields: [todos.assignedTo],
+    references: [users.id],
+    relationName: "assignedTodos",
+  }),
+  assignedByUser: one(users, {
+    fields: [todos.assignedBy],
+    references: [users.id],
+    relationName: "createdTodos",
+  }),
+  project: one(projects, {
+    fields: [todos.projectId],
+    references: [projects.id],
   }),
 }));
 
@@ -193,6 +228,13 @@ export const insertDescriptionTemplateSchema = createInsertSchema(descriptionTem
   createdAt: true,
 });
 
+export const insertTodoSchema = createInsertSchema(todos).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
@@ -216,6 +258,9 @@ export type InsertProjectPermission = z.infer<typeof insertProjectPermissionSche
 export type DescriptionTemplate = typeof descriptionTemplates.$inferSelect;
 export type InsertDescriptionTemplate = z.infer<typeof insertDescriptionTemplateSchema>;
 
+export type Todo = typeof todos.$inferSelect;
+export type InsertTodo = z.infer<typeof insertTodoSchema>;
+
 // Extended types with relations
 export type ProjectWithMembers = Project & {
   members: TeamMember[];
@@ -229,4 +274,10 @@ export type UploadScheduleWithProject = UploadSchedule & {
 export type ActivityWithDetails = Activity & {
   user: User;
   project: Project;
+};
+
+export type TodoWithDetails = Todo & {
+  assignedToUser: User;
+  assignedByUser: User;
+  project?: Project;
 };

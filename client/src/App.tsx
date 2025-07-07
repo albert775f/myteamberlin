@@ -8,6 +8,7 @@ import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import ProjectDetail from "@/pages/project-detail";
 import Schedule from "@/pages/schedule";
+import Todos from "@/pages/todos";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
@@ -41,6 +42,7 @@ function Router() {
           <Route path="/projects" component={Projects} />
           <Route path="/projects/:id" component={ProjectDetail} />
           <Route path="/schedule" component={Schedule} />
+          <Route path="/todos" component={Todos} />
           <Route component={NotFound} />
         </Switch>
       </main>

@@ -7,6 +7,7 @@ import {
   activities,
   projectPermissions,
   descriptionTemplates,
+  todos,
   type User,
   type UpsertUser,
   type Project, 
@@ -21,9 +22,12 @@ import {
   type InsertProjectPermission,
   type DescriptionTemplate,
   type InsertDescriptionTemplate,
+  type Todo,
+  type InsertTodo,
   type ProjectWithMembers,
   type UploadScheduleWithProject,
-  type ActivityWithDetails
+  type ActivityWithDetails,
+  type TodoWithDetails
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -67,6 +71,16 @@ export interface IStorage {
   removeProjectMember(projectId: number, memberId: number, userId: string): Promise<void>;
   setProjectPermission(projectId: number, userId: string, permission: string, grantedBy: string): Promise<void>;
   hasProjectPermission(projectId: number, userId: string, permission: string): Promise<boolean>;
+  
+  // Todos
+  getTodos(userId?: string, projectId?: number): Promise<TodoWithDetails[]>;
+  getTodo(id: number): Promise<TodoWithDetails | undefined>;
+  createTodo(todo: InsertTodo): Promise<Todo>;
+  updateTodo(id: number, todo: Partial<InsertTodo>): Promise<Todo | undefined>;
+  deleteTodo(id: number, userId: string): Promise<boolean>;
+  markTodoComplete(id: number, userId: string): Promise<Todo | undefined>;
+  getAssignedTodos(userId: string): Promise<TodoWithDetails[]>;
+  getCreatedTodos(userId: string): Promise<TodoWithDetails[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -314,6 +328,120 @@ export class DatabaseStorage implements IStorage {
       .where(eq(projectMembers.projectId, projectId));
 
     return membersData.map(item => item.team_members!);
+  }
+
+  // Todo operations
+  async getTodos(userId?: string, projectId?: number): Promise<TodoWithDetails[]> {
+    let query = db
+      .select()
+      .from(todos)
+      .leftJoin(users, eq(todos.assignedTo, users.id))
+      .leftJoin(projects, eq(todos.projectId, projects.id))
+      .orderBy(desc(todos.createdAt));
+
+    if (userId) {
+      query = query.where(eq(todos.assignedTo, userId));
+    }
+
+    if (projectId) {
+      query = query.where(eq(todos.projectId, projectId));
+    }
+
+    const todosData = await query;
+    return todosData.map(item => ({
+      ...item.todos,
+      assignedToUser: item.users!,
+      assignedByUser: item.users!, // We'll fix this in the next query
+      project: item.projects || undefined,
+    }));
+  }
+
+  async getTodo(id: number): Promise<TodoWithDetails | undefined> {
+    const [todoData] = await db
+      .select()
+      .from(todos)
+      .leftJoin(users, eq(todos.assignedTo, users.id))
+      .leftJoin(projects, eq(todos.projectId, projects.id))
+      .where(eq(todos.id, id));
+
+    if (!todoData) return undefined;
+
+    // Get the assignedBy user separately
+    const [assignedByUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, todoData.todos.assignedBy));
+
+    return {
+      ...todoData.todos,
+      assignedToUser: todoData.users!,
+      assignedByUser: assignedByUser!,
+      project: todoData.projects || undefined,
+    };
+  }
+
+  async createTodo(todo: InsertTodo): Promise<Todo> {
+    const [newTodo] = await db
+      .insert(todos)
+      .values(todo)
+      .returning();
+    return newTodo;
+  }
+
+  async updateTodo(id: number, todo: Partial<InsertTodo>): Promise<Todo | undefined> {
+    const [updatedTodo] = await db
+      .update(todos)
+      .set({ ...todo, updatedAt: new Date() })
+      .where(eq(todos.id, id))
+      .returning();
+    return updatedTodo || undefined;
+  }
+
+  async deleteTodo(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(todos)
+      .where(and(
+        eq(todos.id, id),
+        eq(todos.assignedBy, userId)
+      ));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async markTodoComplete(id: number, userId: string): Promise<Todo | undefined> {
+    const [updatedTodo] = await db
+      .update(todos)
+      .set({ 
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(todos.id, id),
+        eq(todos.assignedTo, userId)
+      ))
+      .returning();
+    return updatedTodo || undefined;
+  }
+
+  async getAssignedTodos(userId: string): Promise<TodoWithDetails[]> {
+    return this.getTodos(userId);
+  }
+
+  async getCreatedTodos(userId: string): Promise<TodoWithDetails[]> {
+    const todosData = await db
+      .select()
+      .from(todos)
+      .leftJoin(users, eq(todos.assignedTo, users.id))
+      .leftJoin(projects, eq(todos.projectId, projects.id))
+      .where(eq(todos.assignedBy, userId))
+      .orderBy(desc(todos.createdAt));
+
+    return todosData.map(item => ({
+      ...item.todos,
+      assignedToUser: item.users!,
+      assignedByUser: item.users!, // This will be the current user
+      project: item.projects || undefined,
+    }));
   }
 }
 
