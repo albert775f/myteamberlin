@@ -52,6 +52,8 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
       dueDate: null,
       isPrivate: false,
       visibleTo: [],
+      totalTicks: 1,
+      currentTicks: 0,
     },
   });
 
@@ -96,9 +98,10 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby="todo-dialog-description">
         <DialogHeader>
           <DialogTitle>Create New Todo</DialogTitle>
+          <div id="todo-dialog-description" className="sr-only">Create a new todo item with title, description, priority, and assignment options</div>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -407,7 +410,15 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createTodoMutation.isPending}>
+              <Button 
+                type="submit" 
+                disabled={createTodoMutation.isPending}
+                onClick={(e) => {
+                  console.log("Submit button clicked");
+                  e.preventDefault();
+                  form.handleSubmit(onSubmit)(e);
+                }}
+              >
                 {createTodoMutation.isPending ? "Creating..." : "Create Todo"}
               </Button>
             </div>
