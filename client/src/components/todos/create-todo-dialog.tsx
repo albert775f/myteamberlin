@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CalendarIcon, Plus, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { insertTodoSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -36,7 +37,7 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
   });
 
   const { data: teamMembers } = useQuery<User[]>({
-    queryKey: ["/api/team-members"],
+    queryKey: ["/api/users"],
   });
 
   const form = useForm<TodoFormData>({
@@ -49,6 +50,8 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
       projectId: projectId || null,
       assignedTo: "",
       dueDate: null,
+      isPrivate: false,
+      visibleTo: [],
     },
   });
 
@@ -192,7 +195,7 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
                     </FormControl>
                     <SelectContent>
                       {teamMembers?.map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
+                        <SelectItem key={member.id} value={member.id} className="text-foreground">
                           {member.firstName && member.lastName ? 
                             `${member.firstName} ${member.lastName}` : 
                             member.email
@@ -276,6 +279,99 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
                 </FormItem>
               )}
             />
+
+            {/* Privacy Options */}
+            <div className="space-y-4 border-t pt-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Privacy Settings</h4>
+              
+              <FormField
+                control={form.control}
+                name="isPrivate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Make this todo private
+                      </FormLabel>
+                      <div className="text-xs text-muted-foreground">
+                        Only you and the assigned person can see this todo
+                      </div>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('isPrivate') && (
+                <FormField
+                  control={form.control}
+                  name="visibleTo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Additional People Who Can See This Todo</FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          const currentValues = field.value || [];
+                          if (!currentValues.includes(value)) {
+                            field.onChange([...currentValues, value]);
+                          }
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Add people to share with" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {teamMembers?.filter(member => 
+                            !(field.value || []).includes(member.id) && 
+                            member.id !== form.watch('assignedTo')
+                          ).map((member) => (
+                            <SelectItem key={member.id} value={member.id} className="text-foreground">
+                              {member.firstName && member.lastName ? 
+                                `${member.firstName} ${member.lastName}` : 
+                                member.email
+                              }
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      {field.value && field.value.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {field.value.map((userId) => {
+                            const member = teamMembers?.find(m => m.id === userId);
+                            return (
+                              <div key={userId} className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md text-sm">
+                                <span>{member?.firstName && member?.lastName ? 
+                                  `${member.firstName} ${member.lastName}` : 
+                                  member?.email
+                                }</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    field.onChange(field.value.filter(id => id !== userId));
+                                  }}
+                                  className="text-muted-foreground hover:text-foreground"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
 
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>

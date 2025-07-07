@@ -10,7 +10,9 @@ import {
   Calendar,
   Trash2,
   Edit,
-  Building2
+  Building2,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { format } from "date-fns";
 import type { TodoWithDetails } from "@shared/schema";
@@ -92,6 +94,12 @@ export default function TodoCard({
                   {getPriorityIcon(todo.priority)}
                   <span className="ml-1 capitalize">{todo.priority}</span>
                 </Badge>
+                {todo.isPrivate && (
+                  <Badge variant="secondary" className="bg-slate-100 text-slate-600">
+                    <EyeOff className="w-3 h-3 mr-1" />
+                    Private
+                  </Badge>
+                )}
               </div>
               
               <div className="flex-1">
@@ -168,6 +176,12 @@ export default function TodoCard({
               {getPriorityIcon(todo.priority)}
               <span className="ml-1 capitalize">{todo.priority}</span>
             </Badge>
+            {todo.isPrivate && (
+              <Badge variant="secondary" className="bg-slate-100 text-slate-600">
+                <EyeOff className="w-3 h-3 mr-1" />
+                Private
+              </Badge>
+            )}
           </div>
           
           <div className="flex items-center space-x-1">

@@ -30,7 +30,7 @@ import {
   type TodoWithDetails
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, or, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for authentication)
@@ -378,21 +378,54 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(projects, eq(todos.projectId, projects.id))
       .orderBy(desc(todos.createdAt));
 
+    // Apply privacy and user filters
+    const conditions = [];
+    
     if (userId) {
-      query = query.where(eq(todos.assignedTo, userId));
+      // User can see todos if they are assigned or created them, OR if it's public OR they're in visibleTo
+      conditions.push(
+        and(
+          or(
+            eq(todos.assignedTo, userId),
+            eq(todos.assignedBy, userId)
+          ),
+          or(
+            eq(todos.isPrivate, false),
+            eq(todos.assignedTo, userId),
+            eq(todos.assignedBy, userId),
+            sql`${userId} = ANY(${todos.visibleTo})`
+          )
+        )
+      );
     }
 
     if (projectId) {
-      query = query.where(eq(todos.projectId, projectId));
+      conditions.push(eq(todos.projectId, projectId));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
     }
 
     const todosData = await query;
-    return todosData.map(item => ({
-      ...item.todos,
-      assignedToUser: item.users!,
-      assignedByUser: item.users!, // We'll fix this in the next query
-      project: item.projects || undefined,
-    }));
+    
+    // Get assignedBy users for each todo
+    const todosWithDetails: TodoWithDetails[] = [];
+    for (const item of todosData) {
+      const [assignedByUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, item.todos.assignedBy));
+      
+      todosWithDetails.push({
+        ...item.todos,
+        assignedToUser: item.users!,
+        assignedByUser: assignedByUser,
+        project: item.projects || undefined,
+      });
+    }
+    
+    return todosWithDetails;
   }
 
   async getTodo(id: number): Promise<TodoWithDetails | undefined> {

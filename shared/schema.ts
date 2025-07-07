@@ -111,6 +111,8 @@ export const todos = pgTable("todos", {
   assignedTo: varchar("assigned_to").notNull().references(() => users.id),
   assignedBy: varchar("assigned_by").notNull().references(() => users.id),
   projectId: integer("project_id").references(() => projects.id), // null for general todos
+  isPrivate: boolean("is_private").default(false), // private todos are only visible to creator and assignee
+  visibleTo: text("visible_to").array().default([]), // additional users who can see this todo
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   completedAt: timestamp("completed_at"),
