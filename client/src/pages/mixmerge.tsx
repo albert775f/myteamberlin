@@ -90,9 +90,7 @@ export default function MixMerge() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest(`/api/mixmerge/files/${id}`, {
-        method: 'DELETE',
-      });
+      await apiRequest('DELETE', `/api/mixmerge/files/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/mixmerge/files"] });
@@ -113,11 +111,7 @@ export default function MixMerge() {
   // Merge mutation
   const mergeMutation = useMutation({
     mutationFn: async ({ fileIds, removeSilence }: { fileIds: number[], removeSilence: boolean }) => {
-      return await apiRequest('/api/mixmerge/merge', {
-        method: 'POST',
-        body: JSON.stringify({ fileIds, removeSilence }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return await apiRequest('POST', '/api/mixmerge/merge', { fileIds, removeSilence });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/mixmerge/jobs"] });
