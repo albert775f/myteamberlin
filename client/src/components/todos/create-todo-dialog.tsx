@@ -415,6 +415,9 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
                 disabled={createTodoMutation.isPending}
                 onClick={(e) => {
                   console.log("Submit button clicked");
+                  console.log("Form valid:", form.formState.isValid);
+                  console.log("Form values:", form.getValues());
+                  console.log("Form errors:", form.formState.errors);
                   e.preventDefault();
                   form.handleSubmit(onSubmit)(e);
                 }}
