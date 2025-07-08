@@ -5,6 +5,9 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertProjectSchema, insertUploadScheduleSchema, insertActivitySchema, insertDescriptionTemplateSchema, insertTodoSchema, insertPinboardPageSchema, insertPinboardItemSchema, insertPinboardNoteSchema, insertPinboardPollSchema } from "@shared/schema";
 import { z } from "zod";
 import { youtubeAPI } from "./youtube";
+import { upload, getAudioMetadata, mergeAudioFiles, getFileUrl, deleteFile } from "./audio";
+import fs from "fs";
+import path from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -845,6 +848,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error voting on poll:", error);
       res.status(500).json({ message: "Failed to vote on poll" });
+    }
+  });
+
+  // Audio/MixMerge routes
+  app.get("/api/mixmerge/files", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const files = await storage.getAudioFiles(userId);
+      res.json(files);
+    } catch (error) {
+      console.error("Error fetching audio files:", error);
+      res.status(500).json({ message: "Failed to fetch audio files" });
+    }
+  });
+
+  app.post("/api/mixmerge/upload", isAuthenticated, upload.single('audio'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const metadata = await getAudioMetadata(req.file.path);
+      const audioFile = await storage.createAudioFile({
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        duration: Math.floor(metadata.duration),
+        mimeType: req.file.mimetype,
+        uploadedBy: userId,
+      });
+
+      res.json({
+        ...audioFile,
+        url: getFileUrl(audioFile.filename),
+        metadata
+      });
+    } catch (error) {
+      console.error("Error uploading audio file:", error);
+      res.status(500).json({ message: "Failed to upload audio file" });
+    }
+  });
+
+  app.delete("/api/mixmerge/files/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const file = await storage.getAudioFile(id);
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      const deleted = await storage.deleteAudioFile(id, userId);
+      if (!deleted) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Delete from filesystem
+      const filePath = `uploads/${file.filename}`;
+      deleteFile(filePath);
+
+      res.json({ message: "File deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting audio file:", error);
+      res.status(500).json({ message: "Failed to delete audio file" });
+    }
+  });
+
+  app.get("/api/mixmerge/jobs", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const jobs = await storage.getMergeJobs(userId);
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching merge jobs:", error);
+      res.status(500).json({ message: "Failed to fetch merge jobs" });
+    }
+  });
+
+  app.post("/api/mixmerge/merge", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { fileIds, removeSilence } = req.body;
+
+      if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+        return res.status(400).json({ message: "File IDs are required" });
+      }
+
+      // Create merge job
+      const job = await storage.createMergeJob({
+        status: "pending",
+        removeSilence: removeSilence || false,
+        createdBy: userId,
+      });
+
+      // Link files to job
+      await storage.addJobFiles(job.id, fileIds);
+
+      // Start merge process asynchronously
+      setImmediate(async () => {
+        try {
+          await storage.updateMergeJob(job.id, { status: "processing" });
+
+          // Get file paths
+          const files = await Promise.all(
+            fileIds.map(id => storage.getAudioFile(id))
+          );
+          const filePaths = files.map(file => `uploads/${file?.filename}`);
+
+          // Generate output filename
+          const outputFilename = `merged_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
+          const outputPath = `uploads/${outputFilename}`;
+
+          // Merge files
+          await mergeAudioFiles(filePaths, outputPath, removeSilence, (progress) => {
+            storage.updateMergeJob(job.id, { progress: Math.floor(progress) });
+          });
+
+          await storage.updateMergeJob(job.id, {
+            status: "completed",
+            progress: 100,
+            outputFile: outputFilename,
+            completedAt: new Date(),
+          });
+        } catch (error) {
+          console.error("Error merging files:", error);
+          await storage.updateMergeJob(job.id, { status: "failed" });
+        }
+      });
+
+      res.json(job);
+    } catch (error) {
+      console.error("Error creating merge job:", error);
+      res.status(500).json({ message: "Failed to create merge job" });
+    }
+  });
+
+  app.get("/api/mixmerge/jobs/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const job = await storage.getMergeJob(id);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+      res.json(job);
+    } catch (error) {
+      console.error("Error fetching merge job:", error);
+      res.status(500).json({ message: "Failed to fetch merge job" });
+    }
+  });
+
+  // Serve uploaded files
+  app.get("/uploads/:filename", (req, res) => {
+    const filename = req.params.filename;
+    const filePath = `uploads/${filename}`;
+    if (fs.existsSync(filePath)) {
+      res.sendFile(path.resolve(filePath));
+    } else {
+      res.status(404).json({ message: "File not found" });
     }
   });
 

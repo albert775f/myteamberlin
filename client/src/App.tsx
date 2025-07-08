@@ -10,6 +10,7 @@ import ProjectDetail from "@/pages/project-detail";
 import Schedule from "@/pages/schedule";
 import Todos from "@/pages/todos";
 import Pinboard from "@/pages/pinboard";
+import MixMerge from "@/pages/mixmerge";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
@@ -45,6 +46,7 @@ function Router() {
           <Route path="/schedule" component={Schedule} />
           <Route path="/todos" component={Todos} />
           <Route path="/pinboard" component={Pinboard} />
+          <Route path="/mixmerge" component={MixMerge} />
           <Route component={NotFound} />
         </Switch>
       </main>

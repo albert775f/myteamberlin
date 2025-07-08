@@ -170,6 +170,37 @@ export const pinboardPolls = pgTable("pinboard_polls", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Audio files for MixMerge functionality
+export const audioFiles = pgTable("audio_files", {
+  id: serial("id").primaryKey(),
+  filename: varchar("filename").notNull(),
+  originalName: varchar("original_name").notNull(),
+  size: integer("size").notNull(),
+  duration: integer("duration").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  uploadedBy: varchar("uploaded_by").references(() => users.id).notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+});
+
+// Merge jobs for audio processing
+export const mergeJobs = pgTable("merge_jobs", {
+  id: serial("id").primaryKey(),
+  status: varchar("status", { enum: ["pending", "processing", "completed", "failed"] }).notNull().default("pending"),
+  progress: integer("progress").default(0),
+  outputFile: varchar("output_file"),
+  removeSilence: boolean("remove_silence").default(false),
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// Junction table for merge jobs and audio files
+export const mergeJobFiles = pgTable("merge_job_files", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").references(() => mergeJobs.id, { onDelete: "cascade" }).notNull(),
+  audioFileId: integer("audio_file_id").references(() => audioFiles.id, { onDelete: "cascade" }).notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   teamMembers: many(teamMembers),
@@ -417,3 +448,13 @@ export type PinboardItemWithDetails = PinboardItem & {
   poll?: PinboardPoll;
   todo?: TodoWithDetails;
 };
+
+// Audio types
+export type AudioFile = typeof audioFiles.$inferSelect;
+export type InsertAudioFile = typeof audioFiles.$inferInsert;
+
+export type MergeJob = typeof mergeJobs.$inferSelect;
+export type InsertMergeJob = typeof mergeJobs.$inferInsert;
+
+export type MergeJobFile = typeof mergeJobFiles.$inferSelect;
+export type InsertMergeJobFile = typeof mergeJobFiles.$inferInsert;

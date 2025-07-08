@@ -8,7 +8,8 @@ import {
   LogOut,
   User,
   Play,
-  Layers
+  Layers,
+  Music
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +20,7 @@ const navigation = [
   { name: "Schedule", href: "/schedule", icon: Calendar },
   { name: "To-Dos", href: "/todos", icon: CheckSquare },
   { name: "Pinboard", href: "/pinboard", icon: Layers },
+  { name: "MixMerge", href: "/mixmerge", icon: Music },
 ];
 
 export default function Sidebar() {

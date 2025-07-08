@@ -12,6 +12,9 @@ import {
   pinboardItems,
   pinboardNotes,
   pinboardPolls,
+  audioFiles,
+  mergeJobs,
+  mergeJobFiles,
   type User,
   type UpsertUser,
   type Project, 
@@ -41,7 +44,13 @@ import {
   type ActivityWithDetails,
   type TodoWithDetails,
   type PinboardPageWithItems,
-  type PinboardItemWithDetails
+  type PinboardItemWithDetails,
+  type AudioFile,
+  type InsertAudioFile,
+  type MergeJob,
+  type InsertMergeJob,
+  type MergeJobFile,
+  type InsertMergeJobFile
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, sql } from "drizzle-orm";
@@ -122,6 +131,19 @@ export interface IStorage {
   updatePinboardPoll(id: number, poll: Partial<InsertPinboardPoll>, userId: string): Promise<PinboardPoll | undefined>;
   deletePinboardPoll(id: number, userId: string): Promise<boolean>;
   votePinboardPoll(pollId: number, userId: string, optionIndex: number): Promise<PinboardPoll | undefined>;
+  
+  // Audio Files
+  getAudioFiles(userId?: string): Promise<AudioFile[]>;
+  getAudioFile(id: number): Promise<AudioFile | undefined>;
+  createAudioFile(file: InsertAudioFile): Promise<AudioFile>;
+  deleteAudioFile(id: number, userId: string): Promise<boolean>;
+  
+  // Merge Jobs
+  getMergeJobs(userId?: string): Promise<MergeJob[]>;
+  getMergeJob(id: number): Promise<MergeJob | undefined>;
+  createMergeJob(job: InsertMergeJob): Promise<MergeJob>;
+  updateMergeJob(id: number, job: Partial<InsertMergeJob>): Promise<MergeJob | undefined>;
+  addJobFiles(jobId: number, fileIds: number[]): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -790,6 +812,69 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedPoll || undefined;
+  }
+
+  // Audio Files
+  async getAudioFiles(userId?: string): Promise<AudioFile[]> {
+    const query = db.select().from(audioFiles).orderBy(desc(audioFiles.uploadedAt));
+    if (userId) {
+      query.where(eq(audioFiles.uploadedBy, userId));
+    }
+    return await query;
+  }
+
+  async getAudioFile(id: number): Promise<AudioFile | undefined> {
+    const [file] = await db.select().from(audioFiles).where(eq(audioFiles.id, id));
+    return file;
+  }
+
+  async createAudioFile(file: InsertAudioFile): Promise<AudioFile> {
+    const [newFile] = await db.insert(audioFiles).values(file).returning();
+    return newFile;
+  }
+
+  async deleteAudioFile(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(audioFiles)
+      .where(and(eq(audioFiles.id, id), eq(audioFiles.uploadedBy, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Merge Jobs
+  async getMergeJobs(userId?: string): Promise<MergeJob[]> {
+    const query = db.select().from(mergeJobs).orderBy(desc(mergeJobs.createdAt));
+    if (userId) {
+      query.where(eq(mergeJobs.createdBy, userId));
+    }
+    return await query;
+  }
+
+  async getMergeJob(id: number): Promise<MergeJob | undefined> {
+    const [job] = await db.select().from(mergeJobs).where(eq(mergeJobs.id, id));
+    return job;
+  }
+
+  async createMergeJob(job: InsertMergeJob): Promise<MergeJob> {
+    const [newJob] = await db.insert(mergeJobs).values(job).returning();
+    return newJob;
+  }
+
+  async updateMergeJob(id: number, job: Partial<InsertMergeJob>): Promise<MergeJob | undefined> {
+    const [updatedJob] = await db
+      .update(mergeJobs)
+      .set(job)
+      .where(eq(mergeJobs.id, id))
+      .returning();
+    return updatedJob;
+  }
+
+  async addJobFiles(jobId: number, fileIds: number[]): Promise<void> {
+    const values = fileIds.map(fileId => ({
+      jobId,
+      audioFileId: fileId
+    }));
+    await db.insert(mergeJobFiles).values(values);
   }
 }
 
