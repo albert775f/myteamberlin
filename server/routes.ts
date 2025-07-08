@@ -446,6 +446,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const todoData = {
         ...req.body,
         assignedBy: userId,
+        // Default assignedTo to current user if not specified or empty
+        assignedTo: req.body.assignedTo || userId,
         // Convert dueDate string to Date object if it exists
         dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null
       };

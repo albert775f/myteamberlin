@@ -48,7 +48,7 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
       status: "pending",
       priority: "medium",
       projectId: projectId || null,
-      assignedTo: "",
+      assignedTo: user?.id || "",
       dueDate: null,
       isPrivate: false,
       visibleTo: [],
