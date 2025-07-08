@@ -68,6 +68,7 @@ export interface IStorage {
   getUploadScheduleByProject(projectId: number, userId?: string): Promise<UploadScheduleWithProject[]>;
   createUploadScheduleItem(item: InsertUploadSchedule, userId: string): Promise<UploadSchedule>;
   updateUploadScheduleItem(id: number, item: Partial<InsertUploadSchedule>, userId: string): Promise<UploadSchedule | undefined>;
+  deleteUploadScheduleItem(id: number, userId: string): Promise<boolean>;
   
   // Activities
   getActivities(limit?: number, userId?: string): Promise<ActivityWithDetails[]>;
@@ -297,6 +298,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(uploadSchedule.id, id))
       .returning();
     return updatedItem;
+  }
+
+  async deleteUploadScheduleItem(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(uploadSchedule)
+      .where(eq(uploadSchedule.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   // Activities

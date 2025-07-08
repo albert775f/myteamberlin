@@ -25,6 +25,7 @@ interface TodoCardProps {
   onTick: (todoId: number) => void;
   onCompleteAll: (todoId: number) => void;
   showAssignedBy: boolean;
+  onEdit?: () => void;
 }
 
 export default function TodoCard({ 
@@ -34,7 +35,8 @@ export default function TodoCard({
   onDelete, 
   onTick,
   onCompleteAll,
-  showAssignedBy 
+  showAssignedBy,
+  onEdit 
 }: TodoCardProps) {
   
   const getStatusColor = (status: string) => {
@@ -186,6 +188,16 @@ export default function TodoCard({
                   )}
                 </>
               )}
+              {onEdit && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onEdit}
+                  className="text-gray-600 hover:text-gray-700"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -257,6 +269,16 @@ export default function TodoCard({
                   </Button>
                 )}
               </>
+            )}
+            {onEdit && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onEdit}
+                className="text-gray-600 hover:text-gray-700 h-8 w-8 p-0"
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
             )}
             <Button
               size="sm"

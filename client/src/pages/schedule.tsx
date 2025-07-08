@@ -4,9 +4,10 @@ import Header from "@/components/layout/header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, CalendarIcon, Clock, List } from "lucide-react";
+import { Plus, CalendarIcon, Clock, List, Edit, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import CreateScheduleDialog from "@/components/schedule/create-schedule-dialog";
+import EditScheduleDialog from "@/components/schedule/edit-schedule-dialog";
 import CalendarView from "@/components/schedule/calendar";
 import type { UploadScheduleWithProject } from "@shared/schema";
 
@@ -93,7 +94,7 @@ export default function Schedule() {
             {schedule && schedule.length > 0 ? (
               <div className="space-y-4">
                 {schedule.map((item) => (
-                  <Card key={item.id} className="shadow-sm">
+                  <Card key={item.id} className="shadow-sm group hover:shadow-md transition-shadow">
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
@@ -110,14 +111,26 @@ export default function Schedule() {
                             )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
-                            <CalendarIcon className="w-4 h-4" />
-                            <span>{formatDate(item.scheduledDate)}</span>
+                        <div className="flex items-center space-x-4">
+                          <div className="text-right">
+                            <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
+                              <CalendarIcon className="w-4 h-4" />
+                              <span>{formatDate(item.scheduledDate)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-sm text-gray-500">
+                              <Clock className="w-4 h-4" />
+                              <span>{formatTime(item.scheduledDate)}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-2 text-sm text-gray-500">
-                            <Clock className="w-4 h-4" />
-                            <span>{formatTime(item.scheduledDate)}</span>
+                          <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <EditScheduleDialog 
+                              schedule={item}
+                              trigger={
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              }
+                            />
                           </div>
                         </div>
                       </div>

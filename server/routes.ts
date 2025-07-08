@@ -200,6 +200,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/upload-schedule/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user?.claims?.sub;
+      const scheduleData = { ...req.body };
+      
+      // Convert string date to Date object for validation
+      if (scheduleData.scheduledDate) {
+        scheduleData.scheduledDate = new Date(scheduleData.scheduledDate);
+      }
+      
+      const validatedData = insertUploadScheduleSchema.partial().parse(scheduleData);
+      const item = await storage.updateUploadScheduleItem(id, validatedData, userId);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Upload schedule not found" });
+      }
+      
+      res.json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error("Validation errors:", error.errors);
+        return res.status(400).json({ message: "Invalid schedule data", errors: error.errors });
+      }
+      console.error("Error updating schedule item:", error);
+      res.status(500).json({ message: "Failed to update schedule item" });
+    }
+  });
+
+  app.delete("/api/upload-schedule/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user?.claims?.sub;
+      
+      const success = await storage.deleteUploadScheduleItem(id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Upload schedule not found" });
+      }
+      
+      res.json({ message: "Upload schedule deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting schedule item:", error);
+      res.status(500).json({ message: "Failed to delete schedule item" });
+    }
+  });
+
   // Activities
   app.get("/api/activities", async (req, res) => {
     try {

@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, CheckSquare, Clock, AlertCircle, User, Calendar, List, Grid } from "lucide-react";
+import { Plus, CheckSquare, Clock, AlertCircle, User, Calendar, List, Grid, Edit } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import CreateTodoDialog from "@/components/todos/create-todo-dialog";
+import EditTodoDialog from "@/components/todos/edit-todo-dialog";
 import TodoCard from "@/components/todos/todo-card";
 import { apiRequest } from "@/lib/queryClient";
 import type { TodoWithDetails, ProjectWithMembers } from "@shared/schema";
@@ -226,16 +227,27 @@ export default function Todos() {
             {filteredTodos.length > 0 ? (
               <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" : "space-y-4"}>
                 {filteredTodos.map((todo) => (
-                  <TodoCard 
-                    key={todo.id} 
-                    todo={todo} 
-                    viewMode={viewMode}
-                    onComplete={handleCompleteTodo}
-                    onDelete={handleDeleteTodo}
-                    onTick={handleAddTick}
-                    onCompleteAll={handleCompleteAllTicks}
-                    showAssignedBy={true}
-                  />
+                  <div key={todo.id} className="relative group">
+                    <TodoCard 
+                      todo={todo} 
+                      viewMode={viewMode}
+                      onComplete={handleCompleteTodo}
+                      onDelete={handleDeleteTodo}
+                      onTick={handleAddTick}
+                      onCompleteAll={handleCompleteAllTicks}
+                      showAssignedBy={true}
+                    />
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <EditTodoDialog 
+                        todo={todo}
+                        trigger={
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -255,16 +267,27 @@ export default function Todos() {
             {filteredTodos.length > 0 ? (
               <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" : "space-y-4"}>
                 {filteredTodos.map((todo) => (
-                  <TodoCard 
-                    key={todo.id} 
-                    todo={todo} 
-                    viewMode={viewMode}
-                    onComplete={handleCompleteTodo}
-                    onDelete={handleDeleteTodo}
-                    onTick={handleAddTick}
-                    onCompleteAll={handleCompleteAllTicks}
-                    showAssignedBy={false}
-                  />
+                  <div key={todo.id} className="relative group">
+                    <TodoCard 
+                      todo={todo} 
+                      viewMode={viewMode}
+                      onComplete={handleCompleteTodo}
+                      onDelete={handleDeleteTodo}
+                      onTick={handleAddTick}
+                      onCompleteAll={handleCompleteAllTicks}
+                      showAssignedBy={false}
+                    />
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <EditTodoDialog 
+                        todo={todo}
+                        trigger={
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
