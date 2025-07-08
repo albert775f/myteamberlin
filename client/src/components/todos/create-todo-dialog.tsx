@@ -41,7 +41,7 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
   });
 
   const form = useForm<TodoFormData>({
-    resolver: zodResolver(insertTodoSchema),
+    resolver: zodResolver(insertTodoSchema.omit({ assignedBy: true })),
     defaultValues: {
       title: "",
       description: "",
@@ -59,8 +59,11 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
 
   const createTodoMutation = useMutation({
     mutationFn: async (todo: TodoFormData) => {
-      console.log("Creating todo with data:", todo);
-      return apiRequest("POST", "/api/todos", todo);
+      // The server will automatically set assignedBy to the current user
+      const todoData = { ...todo };
+      delete (todoData as any).assignedBy;
+      console.log("Creating todo with data:", todoData);
+      return apiRequest("POST", "/api/todos", todoData);
     },
     onSuccess: () => {
       console.log("Todo created successfully");
