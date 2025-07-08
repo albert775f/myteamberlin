@@ -443,10 +443,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/todos", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertTodoSchema.parse({
+      const todoData = {
         ...req.body,
-        assignedBy: userId
-      });
+        assignedBy: userId,
+        // Convert dueDate string to Date object if it exists
+        dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null
+      };
+      const validatedData = insertTodoSchema.parse(todoData);
       
       console.log("Todo data received:", validatedData);
       

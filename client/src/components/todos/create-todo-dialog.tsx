@@ -60,7 +60,11 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
   const createTodoMutation = useMutation({
     mutationFn: async (todo: TodoFormData) => {
       // The server will automatically set assignedBy to the current user
-      const todoData = { ...todo };
+      const todoData = { 
+        ...todo,
+        // Convert date string to ISO string if date exists
+        dueDate: todo.dueDate ? new Date(todo.dueDate).toISOString() : null
+      };
       delete (todoData as any).assignedBy;
       console.log("Creating todo with data:", todoData);
       return apiRequest("POST", "/api/todos", todoData);
