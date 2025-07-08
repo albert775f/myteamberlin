@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { insertTodoSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { z } from "zod";
 import type { ProjectWithMembers, User } from "@shared/schema";
@@ -30,6 +31,7 @@ interface CreateTodoDialogProps {
 export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: projects } = useQuery<ProjectWithMembers[]>({
