@@ -39,6 +39,8 @@ export default function MixMerge() {
   const [selectedFiles, setSelectedFiles] = useState<number[]>([]);
   const [removeSilence, setRemoveSilence] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -54,22 +56,62 @@ export default function MixMerge() {
     refetchInterval: 2000, // Poll every 2 seconds for job updates
   });
 
-  // Upload mutation
+  // Upload mutation with progress tracking
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('audio', file);
-      
-      const response = await fetch('/api/mixmerge/upload', {
-        method: 'POST',
-        body: formData,
+      setIsUploading(true);
+      setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+
+      return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('audio', file);
+        
+        const xhr = new XMLHttpRequest();
+
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            setUploadProgress(prev => ({ ...prev, [file.name]: percentComplete }));
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+            setTimeout(() => {
+              setUploadProgress(prev => {
+                const newProgress = { ...prev };
+                delete newProgress[file.name];
+                return newProgress;
+              });
+              if (Object.keys(uploadProgress).length <= 1) {
+                setIsUploading(false);
+              }
+            }, 1000);
+            resolve(JSON.parse(xhr.responseText));
+          } else {
+            setUploadProgress(prev => {
+              const newProgress = { ...prev };
+              delete newProgress[file.name];
+              return newProgress;
+            });
+            reject(new Error('Upload failed'));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[file.name];
+            return newProgress;
+          });
+          reject(new Error('Upload failed'));
+        });
+
+        xhr.open('POST', '/api/mixmerge/upload');
+        xhr.send(formData);
       });
-      
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-      
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/mixmerge/files"] });
@@ -79,6 +121,7 @@ export default function MixMerge() {
       });
     },
     onError: () => {
+      setIsUploading(false);
       toast({
         title: "Upload failed",
         description: "There was an error uploading your file.",
@@ -332,6 +375,26 @@ export default function MixMerge() {
               className="hidden"
             />
           </div>
+          
+          {/* Upload Progress */}
+          {Object.keys(uploadProgress).length > 0 && (
+            <div className="mt-6 space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <h4 className="text-sm font-medium">Upload Progress</h4>
+              {Object.entries(uploadProgress).map(([filename, progress]) => (
+                <div key={filename}>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="truncate max-w-[300px]" title={filename}>
+                      {filename}
+                    </span>
+                    <span className="text-gray-500">
+                      {Math.round(progress)}%
+                    </span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
