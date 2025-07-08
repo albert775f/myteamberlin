@@ -413,13 +413,21 @@ export default function CreateTodoDialog({ trigger, projectId }: CreateTodoDialo
               <Button 
                 type="submit" 
                 disabled={createTodoMutation.isPending}
-                onClick={(e) => {
+                onClick={async (e) => {
                   console.log("Submit button clicked");
                   console.log("Form valid:", form.formState.isValid);
                   console.log("Form values:", form.getValues());
                   console.log("Form errors:", form.formState.errors);
+                  
+                  // Trigger validation
+                  const isValid = await form.trigger();
+                  console.log("After trigger - Form valid:", isValid);
+                  console.log("After trigger - Form errors:", form.formState.errors);
+                  
+                  if (isValid) {
+                    onSubmit(form.getValues());
+                  }
                   e.preventDefault();
-                  form.handleSubmit(onSubmit)(e);
                 }}
               >
                 {createTodoMutation.isPending ? "Creating..." : "Create Todo"}
