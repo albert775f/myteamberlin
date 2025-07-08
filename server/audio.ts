@@ -63,40 +63,73 @@ export async function mergeAudioFiles(
   onProgress?: (progress: number) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const command = ffmpeg();
-
-    // Add all input files
-    inputFiles.forEach(file => {
-      command.input(file);
-    });
-
-    // Create filter complex for concatenation
-    let filterComplex = inputFiles.map((_, index) => `[${index}:0]`).join('') + `concat=n=${inputFiles.length}:v=0:a=1[out]`;
-
-    // Add silence removal if requested
-    if (removeSilence) {
-      filterComplex = inputFiles.map((_, index) => `[${index}:0]silenceremove=stop_periods=-1:stop_duration=5:stop_threshold=-50dB[clean${index}]`).join(';') + 
-                    ';' + inputFiles.map((_, index) => `[clean${index}]`).join('') + `concat=n=${inputFiles.length}:v=0:a=1[out]`;
-    }
-
-    command
-      .complexFilter(filterComplex)
-      .outputOptions(['-map', '[out]'])
-      .audioCodec('libmp3lame')
-      .audioBitrate(192)
-      .output(outputPath)
-      .on('progress', (progress) => {
-        if (onProgress) {
-          onProgress(progress.percent || 0);
+    try {
+      // Validate input files exist
+      for (const file of inputFiles) {
+        if (!fs.existsSync(file)) {
+          reject(new Error(`Input file does not exist: ${file}`));
+          return;
         }
-      })
-      .on('end', () => {
-        resolve();
-      })
-      .on('error', (error) => {
-        reject(error);
-      })
-      .run();
+      }
+
+      console.log('Starting audio merge with files:', inputFiles);
+      console.log('Output path:', outputPath);
+      console.log('Remove silence:', removeSilence);
+
+      const command = ffmpeg();
+
+      // Add all input files
+      inputFiles.forEach(file => {
+        command.input(file);
+      });
+
+      // For simplicity, let's start with basic concatenation
+      if (removeSilence) {
+        // Apply silence removal and concatenation
+        const filterComplex = inputFiles.map((_, index) => 
+          `[${index}:0]silenceremove=stop_periods=-1:stop_duration=5:stop_threshold=-50dB[clean${index}]`
+        ).join(';') + 
+        ';' + inputFiles.map((_, index) => `[clean${index}]`).join('') + 
+        `concat=n=${inputFiles.length}:v=0:a=1[out]`;
+        
+        command.complexFilter(filterComplex);
+        command.outputOptions(['-map', '[out]']);
+      } else {
+        // Simple concatenation without silence removal
+        const filterComplex = inputFiles.map((_, index) => `[${index}:0]`).join('') + 
+                             `concat=n=${inputFiles.length}:v=0:a=1[out]`;
+        
+        command.complexFilter(filterComplex);
+        command.outputOptions(['-map', '[out]']);
+      }
+
+      command
+        .audioCodec('libmp3lame')
+        .audioBitrate(192)
+        .output(outputPath)
+        .on('start', (commandLine) => {
+          console.log('FFmpeg command:', commandLine);
+        })
+        .on('progress', (progress) => {
+          console.log('Processing progress:', progress.percent);
+          if (onProgress) {
+            onProgress(progress.percent || 0);
+          }
+        })
+        .on('end', () => {
+          console.log('Audio merge completed successfully');
+          resolve();
+        })
+        .on('error', (error, stdout, stderr) => {
+          console.error('FFmpeg error:', error.message);
+          console.error('FFmpeg stderr:', stderr);
+          reject(new Error(`Audio merge failed: ${error.message}`));
+        })
+        .run();
+    } catch (error) {
+      console.error('Error setting up audio merge:', error);
+      reject(error);
+    }
   });
 }
 
