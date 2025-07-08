@@ -191,6 +191,32 @@ export default function MixMerge() {
     mergeMutation.mutate({ fileIds: selectedFiles, removeSilence });
   };
 
+  // Calculate total duration of selected files
+  const getTotalDuration = () => {
+    return selectedFiles.reduce((total, fileId) => {
+      const file = audioFiles.find((f: AudioFile) => f.id === fileId);
+      return total + (file?.duration || 0);
+    }, 0);
+  };
+
+  // Calculate total size of selected files
+  const getTotalSize = () => {
+    return selectedFiles.reduce((total, fileId) => {
+      const file = audioFiles.find((f: AudioFile) => f.id === fileId);
+      return total + (file?.size || 0);
+    }, 0);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedFiles.length === audioFiles.length) {
+      // If all are selected, clear selection
+      setSelectedFiles([]);
+    } else {
+      // Select all files
+      setSelectedFiles(audioFiles.map((file: AudioFile) => file.id));
+    }
+  };
+
   const getStatusIcon = (status: MergeJob['status']) => {
     switch (status) {
       case 'completed':
@@ -238,6 +264,15 @@ export default function MixMerge() {
           </p>
         </div>
         <div className="flex items-center space-x-4">
+          {selectedFiles.length > 0 && (
+            <div className="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg">
+              <div className="font-medium">Selected: {selectedFiles.length} files</div>
+              <div className="flex items-center space-x-4 text-xs">
+                <span>Duration: {formatDuration(getTotalDuration())}</span>
+                <span>Size: {formatFileSize(getTotalSize())}</span>
+              </div>
+            </div>
+          )}
           <div className="flex items-center space-x-2">
             <Switch
               id="remove-silence"
@@ -303,10 +338,29 @@ export default function MixMerge() {
       {/* Audio Files */}
       <Card>
         <CardHeader>
-          <CardTitle>Audio Files ({audioFiles.length})</CardTitle>
-          <CardDescription>
-            Select files to merge them together into a single audio file
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Audio Files ({audioFiles.length})</CardTitle>
+              <CardDescription>
+                Select files to merge them together into a single audio file
+                {selectedFiles.length > 0 && (
+                  <span className="block mt-2 font-medium text-blue-600 dark:text-blue-400">
+                    {selectedFiles.length} files selected • Total duration: {formatDuration(getTotalDuration())} • Total size: {formatFileSize(getTotalSize())}
+                  </span>
+                )}
+              </CardDescription>
+            </div>
+            {audioFiles.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+                className="text-xs"
+              >
+                {selectedFiles.length === audioFiles.length ? "Clear All" : "Select All"}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {audioFiles.length === 0 ? (
